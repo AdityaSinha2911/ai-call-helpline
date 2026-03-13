@@ -15,6 +15,8 @@ So far the following components have been implemented:
 * Data preparation scripts
 * Structured question–answer dataset for training experiments
 * Local testing setup for model training
+* Fine Tuned of model completed
+* Model converted to GGUF form, for easy access
 
 The project is still under active development and additional modules will be integrated later.
 
@@ -26,13 +28,19 @@ The project is still under active development and additional modules will be int
 AI-HELPLINE
 │
 ├── data/
-│   ├── college_data.json      # Sample structured dataset
-│   ├── training_data.csv      # Training dataset for experiments
-│   └── prepare.py             # Data preprocessing script
+│   ├── college_data.json          # Structured conversational dataset
+│   ├── training_data.csv          # Raw dataset used for experiments
+│   ├── prepare.py                 # Dataset preprocessing pipeline
+│   └── generate_variation.py      # Script for generating dataset variations
 │
-├── .gitignore                 # Files excluded from version control
-├── LICENSE                    # Project license
-└── README.md                  # Project documentation
+├── training/
+│   ├── downloading_model.py       # Script to download the base model
+│   ├── model_training_example.py  # Example fine-tuning workflow
+│   └── convert_to_gguf_example.py # Example model conversion pipeline
+│
+├── .gitignore                     # Files excluded from version control
+├── LICENSE                        # Project license
+└── README.md                      # Documentation
 ```
 
 ---
@@ -42,6 +50,18 @@ AI-HELPLINE
 This repository contains only the **initial research and prototype components**.
 Certain implementation details and system architecture elements are intentionally not included.
 
+
+Currently included components:
+
+* dataset preparation scripts
+
+* conversational training dataset
+
+* training pipeline examples
+
+* model conversion examples
+
+Several implementation details and architecture components are intentionally not published at this stage.
 ---
 
 ## License
