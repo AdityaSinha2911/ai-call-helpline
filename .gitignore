@@ -10,10 +10,6 @@ __pycache__/
 .env
 
 # Model files (very large)
-*.gguf
-*.bin
-*.pt
-*.safetensors
 college.gguf
 Modelfile
 
