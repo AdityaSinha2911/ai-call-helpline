@@ -1,22 +1,25 @@
 # AI Helpline (Development Prototype)
 
-AI Helpline is an experimental project exploring how conversational AI can automate responses to common information queries through voice-based interaction. The aim is to build an intelligent assistant capable of understanding user questions and providing quick automated responses.
+AI Helpline is an experimental project exploring how conversational AI systems can be trained to respond to structured queries using domain-specific datasets.
 
-This repository currently contains early development work related to **dataset preparation and training pipeline setup**.
+The primary focus of this repository is experimenting with **dataset preparation, model training workflows, and model format conversion** for conversational language models.
 
+At this stage, the repository contains **early development and research components** related to model experimentation.
+
+© 2026 Aditya Sinha. All rights reserved.
 ---
 
 ## Current Progress
 
 So far the following components have been implemented:
 
-* Initial project environment setup
-* Dataset creation for conversational training
-* Data preparation scripts
-* Structured question–answer dataset for training experiments
-* Local testing setup for model training
-* Fine Tuned of model completed
-* Model converted to GGUF form, for easy access
+- Initial project environment setup  
+- Dataset creation for conversational training  
+- Data preparation and preprocessing scripts  
+- Structured question–answer dataset for training experiments  
+- Local testing setup for model training  
+- Example workflow for fine-tuning language models  
+- Conversion pipeline for exporting trained models into GGUF format  
 
 The project is still under active development and additional modules will be integrated later.
 
@@ -26,6 +29,13 @@ The project is still under active development and additional modules will be int
 
 ```
 AI-HELPLINE
+│
+├── backend/
+│   ├── main.py
+│   └── guards/
+│       ├── input_guard.py
+│       ├── output_guard.py
+│       └── topic_guard.py
 │
 ├── data/
 │   ├── college_data.json          # Structured conversational dataset
@@ -40,7 +50,8 @@ AI-HELPLINE
 │
 ├── .gitignore                     # Files excluded from version control
 ├── LICENSE                        # Project license
-└── README.md                      # Documentation
+├── Modelfile                      # Example runtime configuration
+└── README.md                      # Project documentation
 ```
 
 ---
@@ -48,24 +59,35 @@ AI-HELPLINE
 ## Development Status
 
 This repository contains only the **initial research and prototype components**.
-Certain implementation details and system architecture elements are intentionally not included.
-
 
 Currently included components:
 
-* dataset preparation scripts
+- dataset preparation scripts  
+- conversational training dataset  
+- example training pipelines  
+- model conversion examples  
 
-* conversational training dataset
+Large model files, training artifacts, and certain implementation layers are intentionally excluded from the repository.
 
-* training pipeline examples
+Several implementation details and system architecture elements are intentionally not published at this stage.
 
-* model conversion examples
+---
 
-Several implementation details and architecture components are intentionally not published at this stage.
+## Research Focus
+
+The experiments in this repository explore:
+
+- conversational dataset structuring  
+- prompt formatting strategies  
+- supervised fine-tuning experiments  
+- efficient model formats such as **GGUF** for local inference  
+
+These experiments are intended to evaluate how language models adapt to **structured conversational datasets**.
+
 ---
 
 ## License
 
 This project is licensed under the **Creative Commons Attribution-NonCommercial 4.0 International License**.
 
-Commercial use of this code or any derivative work is not permitted without explicit permission from the author.
+Commercial use of this code or any derivative work is **not permitted without explicit permission from the author**.
