@@ -27,6 +27,7 @@ from backend.guards.input_guard import check_input
 from backend.guards.topic_guard import classify_topic
 from backend.guards.output_guard import validate_output
 
+#database file imported
 from backend.database import (
     get_student,
     get_fee_summary_text,
@@ -155,6 +156,7 @@ class MetricsResponse(BaseModel):
     model_errors: int
     uptime_seconds: float
 
+#build prompt create prompt check if the necessary info is given
 def build_prompt(query: str, registration_number: Optional[str], topic: str) -> str:
     if not registration_number:
         return query
