@@ -27,6 +27,13 @@ from backend.guards.input_guard import check_input
 from backend.guards.topic_guard import classify_topic
 from backend.guards.output_guard import validate_output
 
+from backend.database import (
+    get_student,
+    get_fee_summary_text,
+    get_attendance_summary_text,
+    get_results_summary_text,
+    create_ticket,
+)
 
 # LOGGING SETUP
 logging.basicConfig(
@@ -148,6 +155,39 @@ class MetricsResponse(BaseModel):
     model_errors: int
     uptime_seconds: float
 
+def build_prompt(query: str, registration_number: Optional[str], topic: str) -> str:
+    if not registration_number:
+        return query
+
+    reg     = registration_number.strip().upper()
+    student = get_student(reg)
+
+    if not student:
+        return query
+
+    query_lower = query.lower()
+
+    if any(w in query_lower for w in ['fee', 'payment', 'dues', 'challan', 'pending', 'paid', 'balance']):
+        context = get_fee_summary_text(reg)
+
+    elif any(w in query_lower for w in ['attendance', 'absent', 'present', 'bunk', 'short', 'condonation']):
+        context = get_attendance_summary_text(reg)
+
+    elif any(w in query_lower for w in ['result', 'marks', 'grade', 'cgpa', 'sgpa', 'backlog', 'fail']):
+        context = get_results_summary_text(reg)
+
+    elif any(w in query_lower for w in ['complaint', 'problem', 'issue', 'not working', 'grievance']):
+        ticket_id = create_ticket(reg, query, category="other")
+        context = f"Support ticket #{ticket_id} raised. Department will contact in 48 hours."
+
+    else:
+        context = (
+            f"Student: {student['name']}. Course: {student['course']}. "
+            f"Year: {student['year']}. Section: {student['section']}."
+        )
+
+    return f"Context: {context}\nStudent query: {query}"
+
 # Catch any unexpected errors so the server doesn't crash
 # and the client still receives a clean error response.
 @app.exception_handler(Exception)
@@ -256,9 +296,7 @@ async def handle_query(request: QueryRequest):
 
     # Call AI Model 
     # If registration number provided, include it as context
-    prompt = request.query
-    if request.registration_number:
-        prompt = f"Student registration: {request.registration_number}\nQuery: {request.query}"
+    prompt = build_prompt(request.query, request.registration_number, topic_result.topic)
 
     logger.info(f"[{request_id}] Calling model — topic='{topic_result.topic}' score={topic_result.score:.2f}")
     raw_response = await call_ollama(prompt)
