@@ -2,11 +2,12 @@
 
 AI Helpline is an experimental project exploring how conversational AI systems can be trained to respond to structured queries using domain-specific datasets.
 
-The primary focus of this repository is experimenting with **dataset preparation, model training workflows, and model format conversion** for conversational language models.
+The primary focus of this repository is experimenting with **dataset preparation, training workflows, and model format conversion** for conversational language models.
 
-At this stage, the repository contains **early development and research components** related to model experimentation.
+At this stage, the repository contains **early development and research components** related to model experimentation and testing.
 
 © 2026 Aditya Sinha. All rights reserved.
+
 ---
 
 ## Current Progress
@@ -19,7 +20,9 @@ So far the following components have been implemented:
 - Structured question–answer dataset for training experiments  
 - Local testing setup for model training  
 - Example workflow for fine-tuning language models  
-- Conversion pipeline for exporting trained models into GGUF format  
+- Model conversion pipeline for exporting trained models into GGUF format  
+- Prototype backend structure for experimentation  
+- Guard modules for handling structured input/output validation  
 
 The project is still under active development and additional modules will be integrated later.
 
@@ -43,10 +46,15 @@ AI-HELPLINE
 │   ├── prepare.py                 # Dataset preprocessing pipeline
 │   └── generate_variation.py      # Script for generating dataset variations
 │
+├── scripts/
+│   └── create_database.py         # Script for generating local testing database
+│
 ├── training/
 │   ├── downloading_model.py       # Script to download the base model
 │   ├── model_training_example.py  # Example fine-tuning workflow
 │   └── convert_to_gguf_example.py # Example model conversion pipeline
+│
+├── test_guards.py                 # Guard testing module
 │
 ├── .gitignore                     # Files excluded from version control
 ├── LICENSE                        # Project license
@@ -66,8 +74,10 @@ Currently included components:
 - conversational training dataset  
 - example training pipelines  
 - model conversion examples  
+- backend prototype structure for testing  
+- guard modules for experimental validation  
 
-Large model files, training artifacts, and certain implementation layers are intentionally excluded from the repository.
+Large model files, training artifacts, and certain internal components are intentionally excluded from the repository.
 
 Several implementation details and system architecture elements are intentionally not published at this stage.
 
@@ -80,6 +90,7 @@ The experiments in this repository explore:
 - conversational dataset structuring  
 - prompt formatting strategies  
 - supervised fine-tuning experiments  
+- model conversion workflows  
 - efficient model formats such as **GGUF** for local inference  
 
 These experiments are intended to evaluate how language models adapt to **structured conversational datasets**.
