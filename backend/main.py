@@ -124,7 +124,10 @@ class QueryRequest(BaseModel):
         default=None,
         description="Optional client-side request ID for tracing."
     )
-
+    chat_history: list[dict] = Field(
+        default=[],
+        description="Previous messages in this conversation"
+    )
     @field_validator("query")
     @classmethod
     def strip_query(cls, v: str) -> str:
@@ -157,7 +160,7 @@ class MetricsResponse(BaseModel):
     uptime_seconds: float
 
 #build prompt create prompt check if the necessary info is given
-def build_prompt(query: str, registration_number: Optional[str], topic: str) -> str:
+def build_prompt(query: str, registration_number: Optional[str], topic: str, chat_history: list = []) -> str:
     if not registration_number:
         return query
 
@@ -188,7 +191,15 @@ def build_prompt(query: str, registration_number: Optional[str], topic: str) -> 
             f"Year: {student['year']}. Section: {student['section']}."
         )
 
-    return f"Context: {context}\nStudent query: {query}"
+    history_text = ""
+    if chat_history:
+        lines = []
+        for msg in chat_history[-4:]:
+            role = "Student" if msg["role"] == "user" else "AI"
+            lines.append(f"{role}: {msg['content']}")
+        history_text = "Conversation so far:\n" + "\n".join(lines) + "\n"
+
+    return f"Context: {context}\n{history_text}Student: {query}"
 
 # Catch any unexpected errors so the server doesn't crash
 # and the client still receives a clean error response.
@@ -298,7 +309,7 @@ async def handle_query(request: QueryRequest):
 
     # Call AI Model 
     # If registration number provided, include it as context
-    prompt = build_prompt(request.query, request.registration_number, topic_result.topic)
+    prompt = build_prompt(request.query, request.registration_number, topic_result.topic, request.chat_history)
 
     logger.info(f"[{request_id}] Calling model — topic='{topic_result.topic}' score={topic_result.score:.2f}")
     raw_response = await call_ollama(prompt)
