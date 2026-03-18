@@ -1,6 +1,6 @@
-/* ===========================
+/* 
    ROOT & RESET
-=========================== */
+*/
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
 :root {
@@ -52,9 +52,9 @@ body {
   overflow: hidden;
 }
 
-/* ===========================
-   AMBIENT BACKGROUND
-=========================== */
+/* 
+  AMBIENT BACKGROUND
+*/
 .bg-blob {
   position: fixed;
   border-radius: 50%;
@@ -86,9 +86,9 @@ body {
   100% { transform: translate(30px,20px) scale(1.05); }
 }
 
-/* ===========================
+/* 
    SIDEBAR
-=========================== */
+*/
 .sidebar {
   position: fixed;
   top: 0; left: 0;
@@ -237,9 +237,9 @@ body {
   background: var(--teal-dim);
 }
 
-/* ===========================
-   MAIN CONTENT
-=========================== */
+/*
+  MAIN CONTENT
+*/
 .main {
   margin-left: var(--sidebar-w);
   flex: 1;
@@ -261,9 +261,9 @@ body {
 }
 .page.active { display: flex; }
 
-/* ===========================
+/* 
    PAGE HEADER
-=========================== */
+*/
 .page-header {
   display: flex;
   align-items: flex-start;
@@ -299,9 +299,9 @@ body {
   background: var(--teal-glow);
 }
 
-/* ===========================
+/* 
    CHAT WINDOW
-=========================== */
+*/
 .chat-window {
   flex: 1;
   overflow-y: auto;
@@ -457,9 +457,9 @@ body {
   30%            { transform: translateY(-6px); opacity: 1; }
 }
 
-/* ===========================
-   INPUT AREA
-=========================== */
+/* 
+  INPUT AREA
+*/
 .input-area {
   flex-shrink: 0;
   background: var(--surface);
@@ -587,9 +587,9 @@ body {
   color: var(--text-dim);
 }
 
-/* ===========================
-   HISTORY PAGE
-=========================== */
+/*
+  HISTORY PAGE
+*/
 .history-list {
   flex: 1;
   overflow-y: auto;
@@ -649,9 +649,9 @@ body {
   line-height: 1.6;
 }
 
-/* ===========================
-   INFO PAGE
-=========================== */
+/* 
+  INFO PAGE
+*/
 .info-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
@@ -708,9 +708,9 @@ body {
   line-height: 1.65;
 }
 
-/* ===========================
+/* 
    BLOCKED / ERROR MESSAGES
-=========================== */
+*/
 .msg-bubble.blocked {
   border-color: rgba(224,112,112,0.2);
   background: rgba(224,112,112,0.04);
@@ -729,9 +729,9 @@ body {
   margin-bottom: 6px;
 }
 
-/* ===========================
+/* 
    TOAST NOTIFICATION
-=========================== */
+*/
 .toast {
   position: fixed;
   bottom: 28px;
