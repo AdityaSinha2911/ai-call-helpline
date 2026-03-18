@@ -16,6 +16,7 @@ import time
 import uuid
 from contextlib import asynccontextmanager
 from typing import Optional
+import re
 
 import httpx
 from fastapi import FastAPI, HTTPException, Request, status
@@ -82,7 +83,7 @@ async def lifespan(app: FastAPI):
         logger.warning(f"⚠️  Could not reach Ollama at startup: {e}")
         logger.warning("Make sure to run 'ollama serve' in another terminal.")
     
-        logger.info("Warming up model...")
+    logger.info("Warming up model...")
     try:
         async with httpx.AsyncClient(timeout=60.0) as client:
             await client.post(
@@ -335,6 +336,16 @@ async def handle_query(request: QueryRequest):
             block_reason=topic_result.blocked_reason,
             processing_ms=int((time.time() - start_time) * 1000)
         )
+
+    if not request.registration_number:
+        reg_match = re.search(
+            r'\b(\d{4}[A-Z]{2}\d{3}|\d{4,10})\b',
+            request.query,
+            re.IGNORECASE
+        )
+        if reg_match:
+            request.registration_number = reg_match.group(1).upper()
+            logger.info(f"[{request_id}] Auto-detected reg: {request.registration_number}")
 
     # Call AI Model 
     # If registration number provided, include it as context
