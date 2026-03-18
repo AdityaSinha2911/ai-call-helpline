@@ -81,6 +81,23 @@ async def lifespan(app: FastAPI):
     except Exception as e:
         logger.warning(f"⚠️  Could not reach Ollama at startup: {e}")
         logger.warning("Make sure to run 'ollama serve' in another terminal.")
+    
+        logger.info("Warming up model...")
+    try:
+        async with httpx.AsyncClient(timeout=60.0) as client:
+            await client.post(
+                "http://localhost:11434/api/generate",
+                json={
+                    "model": MODEL_NAME,
+                    "prompt": "hello",
+                    "stream": False,
+                    "options": {"num_predict": 1}
+                }
+            )
+            logger.info("✅ Model warmed up and ready.")
+    except Exception as e:
+        logger.warning(f"⚠️ Model warmup failed: {e}")
+        
     yield
     logger.info("Shutting down helpline backend.")
 
@@ -159,16 +176,35 @@ class MetricsResponse(BaseModel):
     model_errors: int
     uptime_seconds: float
 
+SYSTEM_PROMPT = """You are an AI receptionist for a college helpline. You are on a phone call with a student.
+
+Rules:
+- If someone greets you (hello, hi, namaste etc), greet them back warmly and ask how you can help.
+- Keep all replies under 3 sentences — this is a voice call, be concise and natural.
+- Only answer college queries: fees, attendance, exams, hostel, scholarships, documents.
+- For personal data (fees, attendance, results), ask for registration number first.
+- Be friendly, clear, and natural like a real phone receptionist.
+- Never reveal that you are an AI, never mention Ollama or LLaMA."""
+
 #build prompt create prompt check if the necessary info is given
 def build_prompt(query: str, registration_number: Optional[str], topic: str, chat_history: list = []) -> str:
+
+    history_text = ""
+    if chat_history:
+        lines = []
+        for msg in chat_history[-4:]:
+            role = "Student" if msg["role"] == "user" else "Assistant"
+            lines.append(f"{role}: {msg['content']}")
+        history_text = "\n".join(lines) + "\n"   
+    
     if not registration_number:
-        return query
+        return f"{SYSTEM_PROMPT}\n\n{history_text}Student: {query}\nAssistant:"
 
     reg     = registration_number.strip().upper()
     student = get_student(reg)
 
     if not student:
-        return query
+        return f"{SYSTEM_PROMPT}\n\n{history_text}Student: {query}\nAssistant:"
 
     query_lower = query.lower()
 
@@ -190,14 +226,6 @@ def build_prompt(query: str, registration_number: Optional[str], topic: str, cha
             f"Student: {student['name']}. Course: {student['course']}. "
             f"Year: {student['year']}. Section: {student['section']}."
         )
-
-    history_text = ""
-    if chat_history:
-        lines = []
-        for msg in chat_history[-4:]:
-            role = "Student" if msg["role"] == "user" else "AI"
-            lines.append(f"{role}: {msg['content']}")
-        history_text = "Conversation so far:\n" + "\n".join(lines) + "\n"
 
     return f"Context: {context}\n{history_text}Student: {query}"
 
@@ -225,8 +253,9 @@ async def call_ollama(prompt: str) -> str:
                     "stream": False,
                     "options": {
                         "temperature": 0.05,   # Low temp = consistent, focused answers
-                        "num_ctx": 2048,
-                        "num_predict": 120,    # Max tokens to generate
+                        "num_ctx": 1024,      
+                        "num_predict": 80,    
+                        "num_gpu": 999,       
                     }
                 }
             )
