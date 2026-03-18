@@ -152,18 +152,25 @@ def classify_topic(user_input: str) -> TopicResult:
 
     normalized = user_input.lower().strip()
     normalized = re.sub(r'\s+', ' ', normalized)
-
+    
+# greetings are added to be passed without any blockade
     GREETINGS = [
         "hello", "hi", "hey", "hii", "helo", "heya",
         "good morning", "good afternoon", "good evening",
         "namaste", "namaskar", "sat sri akal", "jai hind",
         "howdy", "greetings", "sup", "yo"
     ]
-    
+
     if any(normalized == g or normalized.startswith(g + " ") for g in GREETINGS):
         logger.info(f"[TopicGuard] GREETING allowed | '{normalized[:60]}'")
         return TopicResult(allowed=True, topic="greeting", score=1.0)
     
+    REG_PATTERN = re.compile(r'\b\d{4,}\b|\b\d{4}[a-z]{2}\d{3}\b')
+
+    if REG_PATTERN.search(normalized):
+        logger.info(f"[TopicGuard] REGISTRATION NUMBER detected | '{normalized[:60]}'")
+        return TopicResult(allowed=True, topic="registration", score=1.0)  
+      
     # Hard block list check
     for keyword, category in _ALL_BLOCKED:
         # Use word boundary for short keywords to avoid false positives
