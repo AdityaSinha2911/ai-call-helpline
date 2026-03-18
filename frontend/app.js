@@ -1,12 +1,11 @@
-/* ============================================================
-   AI HELPLINE — app.js
+/*
    Handles: Navigation, Voice STT, TTS, API calls, History
    Backend: FastAPI at localhost:8000
-============================================================ */
+*/
 
 const API_BASE = "http://localhost:8000";
 
-// ── State ──────────────────────────────────────────────────
+// State 
 let sessionId       = generateSessionId();
 let chatHistory     = [];   // {role, content}
 let conversationLog = [];   // full log for history page
@@ -15,7 +14,7 @@ let isSpeaking      = false;
 let recognition     = null;
 let currentUtterance = null;
 
-// ── DOM refs ───────────────────────────────────────────────
+// DOM refs 
 const chatWindow      = document.getElementById("chatWindow");
 const textInput       = document.getElementById("textInput");
 const sendBtn         = document.getElementById("sendBtn");
@@ -30,7 +29,7 @@ const clearChatBtn    = document.getElementById("clearChatBtn");
 const exportBtn       = document.getElementById("exportBtn");
 const historyList     = document.getElementById("historyList");
 
-// ── Init ───────────────────────────────────────────────────
+// Init 
 document.addEventListener("DOMContentLoaded", () => {
   updateSessionDisplay();
   checkBackendStatus();
@@ -41,9 +40,8 @@ document.addEventListener("DOMContentLoaded", () => {
   setupButtons();
 });
 
-// ============================================================
+
 //  NAVIGATION
-// ============================================================
 function setupNavigation() {
   document.querySelectorAll(".nav-item").forEach(item => {
     item.addEventListener("click", e => {
@@ -62,9 +60,8 @@ function switchPage(name) {
   if (name === "history") renderHistory();
 }
 
-// ============================================================
+
 //  SESSION
-// ============================================================
 function generateSessionId() {
   return "sess-" + Math.random().toString(36).slice(2, 10).toUpperCase();
 }
@@ -79,9 +76,8 @@ newSessionBtn.addEventListener("click", () => {
   showToast("New session started");
 });
 
-// ============================================================
+
 //  BACKEND STATUS CHECK
-// ============================================================
 async function checkBackendStatus() {
   try {
     const res = await fetch(`${API_BASE}/health`, { signal: AbortSignal.timeout(5000) });
@@ -97,9 +93,7 @@ async function checkBackendStatus() {
   }
 }
 
-// ============================================================
 //  SPEECH RECOGNITION (STT)
-// ============================================================
 function setupSpeechRecognition() {
   const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
   if (!SpeechRecognition) {
@@ -175,9 +169,8 @@ micBtn.addEventListener("click", () => {
   }
 });
 
-// ============================================================
+
 //  TEXT-TO-SPEECH (TTS)
-// ============================================================
 function speak(text) {
   if (!window.speechSynthesis) return;
   stopSpeaking();
@@ -207,9 +200,7 @@ function stopSpeaking() {
   isSpeaking = false;
 }
 
-// ============================================================
 //  INPUT HANDLERS
-// ============================================================
 function setupInputHandlers() {
   textInput.addEventListener("input", () => {
     updateCharCount();
@@ -229,9 +220,7 @@ function updateCharCount() {
   charCount.textContent = `${textInput.value.length} / 500`;
 }
 
-// ============================================================
 //  BUTTONS
-// ============================================================
 function setupButtons() {
   sendBtn.addEventListener("click", handleSend);
 
@@ -243,9 +232,7 @@ function setupButtons() {
   exportBtn.addEventListener("click", exportLog);
 }
 
-// ============================================================
 //  SEND MESSAGE
-// ============================================================
 async function handleSend() {
   const text = textInput.value.trim();
   if (!text) return;
@@ -298,14 +285,16 @@ async function handleSend() {
   textInput.focus();
 }
 
-// ============================================================
+
 //  API CALL
-// ============================================================
 async function callBackend(query) {
+  const regMatch = query.match(/\b(\d{4}[A-Z]{2}\d{3}|\d{4,10})\b/i);
+
   const payload = {
-    query:        query,
-    session_id:   sessionId,
-    chat_history: chatHistory.slice(-6) // send last 6 for context
+    query:               query,
+    session_id:          sessionId,
+    chat_history:        chatHistory.slice(-6),
+    registration_number: regMatch ? regMatch[1].toUpperCase() : null
   };
 
   const res = await fetch(`${API_BASE}/query`, {
@@ -323,9 +312,7 @@ async function callBackend(query) {
   return await res.json();
 }
 
-// ============================================================
 //  CHAT UI
-// ============================================================
 function appendMessage(role, text, blocked = false, isError = false) {
   const wrap = document.createElement("div");
   wrap.className = `chat-message ${role}`;
@@ -415,9 +402,8 @@ function clearChat() {
   chatHistory = [];
 }
 
-// ============================================================
+
 //  SUGGESTION CHIPS
-// ============================================================
 function fillSuggestion(text) {
   textInput.value = text;
   updateCharCount();
@@ -426,9 +412,7 @@ function fillSuggestion(text) {
   textInput.style.height = textInput.scrollHeight + "px";
 }
 
-// ============================================================
 //  HISTORY
-// ============================================================
 function logMessage(role, text) {
   conversationLog.push({ role, text, time: new Date() });
 }
@@ -479,9 +463,8 @@ function exportLog() {
   showToast("Log exported");
 }
 
-// ============================================================
+
 //  UTILITIES
-// ============================================================
 function formatTime(date) {
   return date.toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" });
 }
