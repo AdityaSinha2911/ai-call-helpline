@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>AI Helpline — College Assistant</title>
+  <link rel="stylesheet" href="style.css" />
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600&display=swap" rel="stylesheet">
+</head>
+<body>
+
+  <div class="bg-blob blob-1"></div>
+  <div class="bg-blob blob-2"></div>
+  <div class="bg-blob blob-3"></div>
+
+  <aside class="sidebar">
+    <div class="sidebar-logo">
+      <div class="logo-icon">
+        <svg viewBox="0 0 36 36" fill="none">
+          <circle cx="18" cy="18" r="17" stroke="currentColor" stroke-width="1.5"/>
+          <path d="M10 18 Q18 10 26 18 Q18 26 10 18Z" fill="currentColor" opacity="0.35"/>
+          <circle cx="18" cy="18" r="4" fill="currentColor"/>
+        </svg>
+      </div>
+      <div>
+        <div class="logo-title">AI Helpline</div>
+        <div class="logo-sub">College Assistant</div>
+      </div>
+    </div>
+
+    <nav class="sidebar-nav">
+      <div class="nav-label">Navigation</div>
+      <a href="#" class="nav-item active" data-page="assistant">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
+        Assistant
+      </a>
+      <a href="#" class="nav-item" data-page="history">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 8v4l3 3"/><circle cx="12" cy="12" r="9"/></svg>
+        Call History
+      </a>
+      <a href="#" class="nav-item" data-page="info">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><path d="M12 8h.01M12 12v4"/></svg>
+        How It Works
+      </a>
+    </nav>
+
+    <div class="sidebar-status">
+      <div class="status-dot" id="statusDot"></div>
+      <div>
+        <div class="status-label">Backend</div>
+        <div class="status-value" id="statusText">Checking...</div>
+      </div>
+    </div>
+
+    <div class="session-card">
+      <div class="session-label">Session ID</div>
+      <div class="session-id" id="sessionIdDisplay">—</div>
+      <button class="new-session-btn" id="newSessionBtn">↺ New Session</button>
+    </div>
+  </aside>
+
+  <main class="main">
+
+    <!-- ASSISTANT PAGE -->
+    <section class="page active" id="page-assistant">
+      <header class="page-header">
+        <div>
+          <h1 class="page-title">Voice Assistant</h1>
+          <p class="page-subtitle">Speak or type your college query</p>
+        </div>
+        <button class="btn-ghost" id="clearChatBtn">Clear Chat</button>
+      </header>
+
+      <div class="chat-window" id="chatWindow">
+        <div class="chat-welcome" id="welcomeScreen">
+          <div class="welcome-icon">
+            <svg viewBox="0 0 56 56" fill="none">
+              <circle cx="28" cy="28" r="27" stroke="currentColor" stroke-width="1.2" opacity="0.3"/>
+              <circle cx="28" cy="28" r="18" stroke="currentColor" stroke-width="1" opacity="0.2"/>
+              <path d="M16 28 Q28 16 40 28 Q28 40 16 28Z" fill="currentColor" opacity="0.15"/>
+              <circle cx="28" cy="28" r="7" fill="currentColor" opacity="0.5"/>
+            </svg>
+          </div>
+          <h2>Hello, I'm your College AI</h2>
+          <p>Ask me anything about fees, attendance, exams, hostel, scholarships, or documents.</p>
+          <div class="suggestion-chips">
+            <button class="chip" onclick="fillSuggestion('What is my fee status?')">💰 Fee Status</button>
+            <button class="chip" onclick="fillSuggestion('Show my attendance percentage')">📊 Attendance</button>
+            <button class="chip" onclick="fillSuggestion('When are the upcoming exams?')">📝 Exams</button>
+            <button class="chip" onclick="fillSuggestion('How to apply for hostel?')">🏠 Hostel</button>
+            <button class="chip" onclick="fillSuggestion('Tell me about scholarship eligibility')">🎓 Scholarship</button>
+            <button class="chip" onclick="fillSuggestion('I want to raise a complaint')">🎫 Complaint</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="input-area">
+        <div class="input-row">
+          <div class="text-input-wrap">
+            <textarea id="textInput" placeholder="Type your query here..." rows="1" maxlength="500"></textarea>
+          </div>
+          <button class="mic-btn" id="micBtn" title="Click to speak">
+            <span class="mic-ring ring-1"></span>
+            <span class="mic-ring ring-2"></span>
+            <svg class="mic-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+              <rect x="9" y="2" width="6" height="12" rx="3"/>
+              <path d="M5 10a7 7 0 0014 0"/>
+              <line x1="12" y1="20" x2="12" y2="23"/>
+              <line x1="8" y1="23" x2="16" y2="23"/>
+            </svg>
+          </button>
+          <button class="send-btn" id="sendBtn">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+              <line x1="22" y1="2" x2="11" y2="13"/>
+              <polygon points="22 2 15 22 11 13 2 9 22 2"/>
+            </svg>
+          </button>
+        </div>
+        <div class="input-footer">
+          <span id="micStatus" class="mic-status-text"> Click mic to speak</span>
+          <span id="charCount" class="char-count">0 / 500</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- HISTORY PAGE -->
+    <section class="page" id="page-history">
+      <header class="page-header">
+        <div>
+          <h1 class="page-title">Call History</h1>
+          <p class="page-subtitle">Conversation log from this session</p>
+        </div>
+        <button class="btn-ghost" id="exportBtn">Export Log</button>
+      </header>
+      <div class="history-list" id="historyList">
+        <div class="empty-state">
+          <svg viewBox="0 0 64 64" fill="none" width="52" height="52">
+            <circle cx="32" cy="32" r="30" stroke="currentColor" stroke-width="1.5" opacity="0.25"/>
+            <path d="M22 32h20M32 22v20" stroke="currentColor" stroke-width="2" stroke-linecap="round" opacity="0.3"/>
+          </svg>
+          <p>No history yet.<br>Start a conversation first.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- INFO PAGE -->
+    <section class="page" id="page-info">
+      <header class="page-header">
+        <div>
+          <h1 class="page-title">How It Works</h1>
+          <p class="page-subtitle">System pipeline and architecture</p>
+        </div>
+      </header>
+      <div class="info-grid">
+        <div class="info-card">
+          <div class="info-num">01</div>
+          <h3>Voice Input</h3>
+          <p>Browser captures your microphone and converts speech to text using the Web Speech API — no external service or cost.</p>
+        </div>
+        <div class="info-card">
+          <div class="info-num">02</div>
+          <h3>Security Guards</h3>
+          <p>Your query passes through Input Guard (jailbreak detection) and Topic Guard (college-only filter) before reaching the AI.</p>
+        </div>
+        <div class="info-card">
+          <div class="info-num">03</div>
+          <h3>AI Processing</h3>
+          <p>Fine-tuned LLaMA 3.1 running via Ollama processes your query with live database context injected into the prompt.</p>
+        </div>
+        <div class="info-card">
+          <div class="info-num">04</div>
+          <h3>Voice Response</h3>
+          <p>AI response is spoken back using the browser's Text-to-Speech engine — natural, clear, and instant.</p>
+        </div>
+        <div class="info-card">
+          <div class="info-num">05</div>
+          <h3>OTP Verification</h3>
+          <p>For personal data like fees or attendance, the system verifies your identity via OTP before sharing any information.</p>
+        </div>
+        <div class="info-card">
+          <div class="info-num">06</div>
+          <h3>Ticket System</h3>
+          <p>Unresolved issues auto-convert to support tickets, visible in the admin dashboard for staff action.</p>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <script src="app.js"></script>
+</body>
+</html>
