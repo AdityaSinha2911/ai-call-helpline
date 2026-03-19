@@ -164,6 +164,12 @@ def classify_topic(user_input: str) -> TopicResult:
     if any(normalized == g or normalized.startswith(g + " ") for g in GREETINGS):
         logger.info(f"[TopicGuard] GREETING allowed | '{normalized[:60]}'")
         return TopicResult(allowed=True, topic="greeting", score=1.0)
+
+    #normal conversational terms added
+    CONFIRMATIONS = ["yes", "no", "ok", "okay", "sure", "yes please", "haan", "nahi"]
+    if normalized in CONFIRMATIONS:
+        logger.info(f"[TopicGuard] CONFIRMATION allowed | '{normalized[:60]}'")
+        return TopicResult(allowed=True, topic="confirmation", score=1.0)
     
     REG_PATTERN = re.compile(r'\b\d{4,}\b|\b\d{4}[a-z]{2}\d{3}\b')
 
