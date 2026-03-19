@@ -50,7 +50,7 @@ logger = logging.getLogger("helpline.main")
 # running locally.
 OLLAMA_URL   = "http://localhost:11434/api/generate"
 MODEL_NAME   = "college-helpline"
-OLLAMA_TIMEOUT = 30.0   # seconds
+OLLAMA_TIMEOUT = 60.0   # seconds
 
 # Standard refusal message 
 REFUSAL_MSG = "I can only assist with college administrative queries such as fees, attendance, exams, hostel, or documents."
@@ -183,7 +183,7 @@ Rules:
 - If someone greets you (hello, hi, namaste etc), greet them back warmly and ask how you can help.
 - Keep all replies under 3 sentences — this is a voice call, be concise and natural.
 - Only answer college queries: fees, attendance, exams, hostel, scholarships, documents.
-- For personal data (fees, attendance, results), ask for registration number first.
+- If registration number is provided in query, use it directly to fetch data.
 - Be friendly, clear, and natural like a real phone receptionist.
 - Never reveal that you are an AI, never mention Ollama or LLaMA."""
 
@@ -228,7 +228,7 @@ def build_prompt(query: str, registration_number: Optional[str], topic: str, cha
             f"Year: {student['year']}. Section: {student['section']}."
         )
 
-    return f"Context: {context}\n{history_text}Student: {query}"
+    return f"{SYSTEM_PROMPT}\n\nContext: {context}\n\n{history_text}Student: {query}\nAssistant:"
 
 # Catch any unexpected errors so the server doesn't crash
 # and the client still receives a clean error response.
