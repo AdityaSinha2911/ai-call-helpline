@@ -19,14 +19,19 @@ from typing import Optional
 import re
 
 import httpx
-from fastapi import FastAPI, HTTPException, Request, status
+from fastapi import FastAPI, HTTPException, Request, status,APIRouter
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, Response
 from pydantic import BaseModel, Field, field_validator
 
 from backend.guards.input_guard import check_input
 from backend.guards.topic_guard import classify_topic
 from backend.guards.output_guard import validate_output
+
+from dotenv import load_dotenv
+load_dotenv()
+
+from twilio_voice.call_handler import router as voice_router
 
 #database file imported
 from backend.database import (
@@ -123,6 +128,8 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+app.include_router(voice_router)  
+
 # Defines the expected structure of incoming requests.
 # FastAPI automatically validates incoming JSON using this model.
 class QueryRequest(BaseModel):
@@ -138,12 +145,16 @@ class QueryRequest(BaseModel):
         description="Student's registration number (optional, required for personal data).",
         examples=["2024CS001"]
     )
+    session_id: Optional[str] = Field(
+        default=None,
+        description="Optional frontend session identifier for chat continuity."
+    )
     request_id: Optional[str] = Field(
         default=None,
         description="Optional client-side request ID for tracing."
     )
     chat_history: list[dict] = Field(
-        default=[],
+        default_factory=list,
         description="Previous messages in this conversation"
     )
     @field_validator("query")
@@ -188,14 +199,17 @@ Rules:
 - Never reveal that you are an AI, never mention Ollama or LLaMA."""
 
 #build prompt create prompt check if the necessary info is given
-def build_prompt(query: str, registration_number: Optional[str], topic: str, chat_history: list = []) -> str:
+def build_prompt(query: str, registration_number: Optional[str], topic: str, chat_history: Optional[list] = None) -> str:
 
     history_text = ""
     if chat_history:
         lines = []
         for msg in chat_history[-4:]:
-            role = "Student" if msg["role"] == "user" else "Assistant"
-            lines.append(f"{role}: {msg['content']}")
+            role_raw = str(msg.get("role", "assistant")).lower()
+            role = "Student" if role_raw == "user" else "Assistant"
+            content = str(msg.get("content", "")).strip()
+            if content:
+                lines.append(f"{role}: {content}")
         history_text = "\n".join(lines) + "\n"   
     
     if not registration_number:
@@ -253,7 +267,7 @@ async def call_ollama(prompt: str) -> str:
                     "prompt": prompt,
                     "stream": False,
                     "options": {
-                        "temperature": 0.05,   # Low temp = consistent, focused answers
+                        "temperature": 0.05,
                         "num_ctx": 1024,      
                         "num_predict": 80,    
                         "num_gpu": 999,       
@@ -284,6 +298,13 @@ async def call_ollama(prompt: str) -> str:
         raise HTTPException(
             status_code=status.HTTP_502_BAD_GATEWAY,
             detail="AI model returned an error."
+        )
+    except Exception as e:
+        logger.error(f"[Ollama] Unexpected error: {e}", exc_info=True)
+        metrics["model_errors"] += 1
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail="AI model request failed unexpectedly."
         )
 
 
@@ -348,7 +369,6 @@ async def handle_query(request: QueryRequest):
             logger.info(f"[{request_id}] Auto-detected reg: {request.registration_number}")
 
     # Call AI Model 
-    # If registration number provided, include it as context
     prompt = build_prompt(request.query, request.registration_number, topic_result.topic, request.chat_history)
 
     logger.info(f"[{request_id}] Calling model — topic='{topic_result.topic}' score={topic_result.score:.2f}")
