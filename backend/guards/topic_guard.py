@@ -22,7 +22,7 @@ BLOCKED_TOPICS: dict[str, list[str]] = {
     "sports": [
         "cricket", "football", "ipl", "fifa", "nba", "icc", "match score",
         "world cup", "olympic", "tennis", "badminton", "kabaddi", "hockey",
-        "score", "wicket", "century", "goal", "tournament bracket"
+        "wicket", "century", "goal", "tournament bracket"
     ],
     "politics": [
         "election", "minister", "parliament", "modi", "bjp", "congress",
