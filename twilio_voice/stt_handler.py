@@ -147,7 +147,7 @@ def extract_registration_number(text: str) -> str | None:
         # Returns "2024EC033"
     """
     # Standard format: 2024EC033
-    pattern = r'\b(\d{4}[A-Z]{2}\d{3})\b'
+    pattern = r'\b(1\d{7})\b'
     match = re.search(pattern, text.upper())
 
     if match:
