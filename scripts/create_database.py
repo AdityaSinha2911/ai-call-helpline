@@ -130,15 +130,13 @@ def generate_indian_name(gender: str) -> tuple[str, str, str]:
     )
 
 # REG NUMBER GENERATOR
-# Format: 2024CS001, 2023EC045
 _used_reg_numbers = set()
 
 def generate_reg_number(course: str, year: int) -> str:
-    admission_year = 2025 - year
-    code = COURSE_CODES[course]
+    admission_year = 25 - year  
     while True:
-        num = random.randint(1, 999)
-        reg = f"{admission_year}{code}{num:03d}"
+        num = random.randint(10000, 99999)
+        reg = f"1{admission_year:02d}{num}"
         if reg not in _used_reg_numbers:
             _used_reg_numbers.add(reg)
             return reg
@@ -157,146 +155,138 @@ def calculate_grade(total: int) -> tuple[str, str]:
 # All 7 tables defined here
 SCHEMA = """
 
-Table 1: Students 
+-- Table 1: Students
 CREATE TABLE IF NOT EXISTS students (
-    id                  TEXT PRIMARY KEY,   -- Reg number e.g. 2024CS001
-    name                TEXT NOT NULL,
-    gender              TEXT NOT NULL,
-    father_name         TEXT NOT NULL,
-    mother_name         TEXT NOT NULL,
-    date_of_birth       TEXT NOT NULL,      -- YYYY-MM-DD
-    blood_group         TEXT NOT NULL,
-    phone               TEXT NOT NULL,      -- Student phone (OTP sent here)
-    parent_phone        TEXT NOT NULL,      -- Parent/guardian phone
-    email               TEXT NOT NULL,
-    course              TEXT NOT NULL,
-    department          TEXT NOT NULL,
-    year                INTEGER NOT NULL,   -- Current year 1-4
-    section             TEXT NOT NULL,
-    category            TEXT NOT NULL,      -- General/OBC/SC/ST/EWS
-    state               TEXT NOT NULL,      -- Home state
-    address             TEXT NOT NULL,
-    hostel_taken        INTEGER NOT NULL,   -- 1=yes, 0=no
-    hostel_room         TEXT,              -- NULL if no hostel
-    scholarship         INTEGER NOT NULL,  -- 1=yes, 0=no
-    scholarship_amount  INTEGER NOT NULL,  -- 0 if no scholarship
-    is_active           INTEGER DEFAULT 1  -- 1=active, 0=alumni/dropped
+    id TEXT PRIMARY KEY,
+    name TEXT NOT NULL,
+    gender TEXT NOT NULL,
+    father_name TEXT NOT NULL,
+    mother_name TEXT NOT NULL,
+    date_of_birth TEXT NOT NULL,
+    blood_group TEXT NOT NULL,
+    phone TEXT NOT NULL,
+    parent_phone TEXT NOT NULL,
+    email TEXT NOT NULL,
+    course TEXT NOT NULL,
+    department TEXT NOT NULL,
+    year INTEGER NOT NULL,
+    section TEXT NOT NULL,
+    category TEXT NOT NULL,
+    state TEXT NOT NULL,
+    address TEXT NOT NULL,
+    hostel_taken INTEGER NOT NULL,
+    hostel_room TEXT,
+    scholarship INTEGER NOT NULL,
+    scholarship_amount INTEGER NOT NULL,
+    is_active INTEGER DEFAULT 1
 );
 
-Table 2: Fees 
+-- Table 2: Fees
 CREATE TABLE IF NOT EXISTS fees (
-    id              INTEGER PRIMARY KEY AUTOINCREMENT,
-    student_id      TEXT NOT NULL,
-    semester        INTEGER NOT NULL,
-    total_amount    INTEGER NOT NULL,
-    paid_amount     INTEGER NOT NULL,
-    due_date        TEXT NOT NULL,
-    paid_date       TEXT,               -- NULL if not paid yet
-    status          TEXT NOT NULL,      -- Paid / Pending / Partial
-    fine_amount     INTEGER DEFAULT 0,
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    student_id TEXT NOT NULL,
+    semester INTEGER NOT NULL,
+    total_amount INTEGER NOT NULL,
+    paid_amount INTEGER NOT NULL,
+    due_date TEXT NOT NULL,
+    paid_date TEXT,
+    status TEXT NOT NULL,
+    fine_amount INTEGER DEFAULT 0,
     FOREIGN KEY (student_id) REFERENCES students(id)
 );
 
-Table 3: Attendance 
+-- Table 3: Attendance
 CREATE TABLE IF NOT EXISTS attendance (
-    id              INTEGER PRIMARY KEY AUTOINCREMENT,
-    student_id      TEXT NOT NULL,
-    subject         TEXT NOT NULL,
-    total_classes   INTEGER NOT NULL,
-    attended        INTEGER NOT NULL,
-    percentage      REAL NOT NULL,
-    status          TEXT NOT NULL,      -- Safe / Warning / Short
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    student_id TEXT NOT NULL,
+    subject TEXT NOT NULL,
+    total_classes INTEGER NOT NULL,
+    attended INTEGER NOT NULL,
+    percentage REAL NOT NULL,
+    status TEXT NOT NULL,
     FOREIGN KEY (student_id) REFERENCES students(id)
 );
 
-Table 4: Results 
+-- Table 4: Results
 CREATE TABLE IF NOT EXISTS results (
-    id          INTEGER PRIMARY KEY AUTOINCREMENT,
-    student_id  TEXT NOT NULL,
-    semester    INTEGER NOT NULL,
-    subject     TEXT NOT NULL,
-    internal    INTEGER NOT NULL,       -- Out of 40
-    external    INTEGER NOT NULL,       -- Out of 60
-    total       INTEGER NOT NULL,       -- Out of 100
-    grade       TEXT NOT NULL,          -- A+/A/B+/B/C/D/F
-    result      TEXT NOT NULL,          -- Pass/Fail/Backlog
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    student_id TEXT NOT NULL,
+    semester INTEGER NOT NULL,
+    subject TEXT NOT NULL,
+    internal INTEGER NOT NULL,
+    external INTEGER NOT NULL,
+    total INTEGER NOT NULL,
+    grade TEXT NOT NULL,
+    result TEXT NOT NULL,
     FOREIGN KEY (student_id) REFERENCES students(id)
 );
 
-Table 5: Support Tickets 
--- Raised during a call when student has a complaint or complex issue
-
+-- Table 5: Tickets
 CREATE TABLE IF NOT EXISTS tickets (
-    id              INTEGER PRIMARY KEY AUTOINCREMENT,
-    student_id      TEXT NOT NULL,
-    call_id         TEXT,               -- Twilio CallSid (which call raised this)
-    category        TEXT NOT NULL,      -- fees/hostel/exam/attendance/document/other
-    issue           TEXT NOT NULL,      -- What the student said
-    status          TEXT DEFAULT 'Open',         -- Open/In Progress/Closed
-    priority        TEXT DEFAULT 'Normal',       -- Low/Normal/High
-    assigned_to     TEXT DEFAULT 'Unassigned',   -- Which dept to handle
-    created_at      DATETIME DEFAULT CURRENT_TIMESTAMP,
-    updated_at      DATETIME DEFAULT CURRENT_TIMESTAMP,
-    resolved_at     DATETIME,           -- When admin closed it
-    admin_note      TEXT,               -- Admin's resolution note
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    student_id TEXT NOT NULL,
+    call_id TEXT,
+    category TEXT NOT NULL,
+    issue TEXT NOT NULL,
+    status TEXT DEFAULT 'Open',
+    priority TEXT DEFAULT 'Normal',
+    assigned_to TEXT DEFAULT 'Unassigned',
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    resolved_at DATETIME,
+    admin_note TEXT,
     FOREIGN KEY (student_id) REFERENCES students(id)
 );
 
-Table 6: Call Summaries 
--- AI generated summary saved automatically when a call ends
--- Admin can see all calls, follow ups, action items in dashboard
-
+-- Table 6: Call Summaries
 CREATE TABLE IF NOT EXISTS call_summaries (
-    id                  INTEGER PRIMARY KEY AUTOINCREMENT,
-    call_id             TEXT UNIQUE,        -- Twilio CallSid (unique per call)
-    student_id          TEXT,               -- NULL if student didn't verify
-    student_name        TEXT,               -- For quick dashboard display
-    call_date           TEXT NOT NULL,      -- YYYY-MM-DD
-    call_time           TEXT NOT NULL,      -- HH:MM:SS
-    call_duration       TEXT,               -- e.g. "3 mins 42 secs"
-    topics_discussed    TEXT,               -- JSON array e.g. ["fees","attendance"]
-    full_transcript     TEXT,               -- Complete call conversation
-    ai_summary          TEXT,               -- 3-4 line AI generated summary
-    action_required     INTEGER DEFAULT 0,  -- 1=follow up needed, 0=resolved
-    follow_up_notes     TEXT,               -- What needs to be done
-    ticket_raised       INTEGER DEFAULT 0,  -- 1=ticket was created, 0=no
-    ticket_id           INTEGER,            -- FK to tickets table if raised
-    otp_verified        INTEGER DEFAULT 0,  -- 1=student verified, 0=not
-    call_outcome        TEXT DEFAULT 'Completed', -- Completed/Dropped/Failed
-    admin_reviewed      INTEGER DEFAULT 0,  -- 1=admin saw this, 0=unseen
-    admin_note          TEXT,               -- Admin's note after review
-    created_at          DATETIME DEFAULT CURRENT_TIMESTAMP,
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    call_id TEXT UNIQUE,
+    student_id TEXT,
+    student_name TEXT,
+    call_date TEXT NOT NULL,
+    call_time TEXT NOT NULL,
+    call_duration TEXT,
+    topics_discussed TEXT,
+    full_transcript TEXT,
+    ai_summary TEXT,
+    action_required INTEGER DEFAULT 0,
+    follow_up_notes TEXT,
+    ticket_raised INTEGER DEFAULT 0,
+    ticket_id INTEGER,
+    otp_verified INTEGER DEFAULT 0,
+    call_outcome TEXT DEFAULT 'Completed',
+    admin_reviewed INTEGER DEFAULT 0,
+    admin_note TEXT,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (student_id) REFERENCES students(id),
-    FOREIGN KEY (ticket_id)  REFERENCES tickets(id)
+    FOREIGN KEY (ticket_id) REFERENCES tickets(id)
 );
 
-Table 7: OTP Store 
--- Temporary OTP storage — deleted after use or expiry
--- In production this should be Redis, but SQLite works for now
+-- Table 7: OTP Store
 CREATE TABLE IF NOT EXISTS otp_store (
-    id          INTEGER PRIMARY KEY AUTOINCREMENT,
-    student_id  TEXT NOT NULL UNIQUE,   -- One OTP per student at a time
-    call_id     TEXT NOT NULL,          -- Which call requested this OTP
-    otp_code    TEXT NOT NULL,          -- 6-digit code
-    phone_sent  TEXT NOT NULL,          -- Which phone number got the SMS
-    created_at  DATETIME DEFAULT CURRENT_TIMESTAMP,
-    expires_at  DATETIME NOT NULL,      -- OTP valid for 5 minutes only
-    is_used     INTEGER DEFAULT 0,      -- 1=already verified, 0=pending
-    attempts    INTEGER DEFAULT 0,      -- How many times student tried
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    student_id TEXT NOT NULL UNIQUE,
+    call_id TEXT NOT NULL,
+    otp_code TEXT NOT NULL,
+    phone_sent TEXT NOT NULL,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    expires_at DATETIME NOT NULL,
+    is_used INTEGER DEFAULT 0,
+    attempts INTEGER DEFAULT 0,
     FOREIGN KEY (student_id) REFERENCES students(id)
 );
 
-Indexes for fast lookups 
--- Without these, searching 500+ students is slow
-
-CREATE INDEX IF NOT EXISTS idx_fees_student       ON fees(student_id);
+-- Indexes
+CREATE INDEX IF NOT EXISTS idx_fees_student ON fees(student_id);
 CREATE INDEX IF NOT EXISTS idx_attendance_student ON attendance(student_id);
-CREATE INDEX IF NOT EXISTS idx_results_student    ON results(student_id);
-CREATE INDEX IF NOT EXISTS idx_tickets_student    ON tickets(student_id);
-CREATE INDEX IF NOT EXISTS idx_tickets_status     ON tickets(status);
+CREATE INDEX IF NOT EXISTS idx_results_student ON results(student_id);
+CREATE INDEX IF NOT EXISTS idx_tickets_student ON tickets(student_id);
+CREATE INDEX IF NOT EXISTS idx_tickets_status ON tickets(status);
 CREATE INDEX IF NOT EXISTS idx_call_summaries_date ON call_summaries(call_date);
 CREATE INDEX IF NOT EXISTS idx_call_action_required ON call_summaries(action_required);
-CREATE INDEX IF NOT EXISTS idx_otp_student        ON otp_store(student_id);
+CREATE INDEX IF NOT EXISTS idx_otp_student ON otp_store(student_id);
+
 """
 
 # MAIN GENERATOR
