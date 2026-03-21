@@ -156,6 +156,15 @@ async def process_speech_input(
         session = get_session(CallSid)
         logger.info(f"[Call] [{CallSid}] Reg detected: {reg}")
 
+    # If query needs personal data but no reg number yet
+    personal_keywords = ['fee', 'fees', 'attendance', 'result', 'marks', 'hostel']
+    needs_personal = any(w in query.lower() for w in personal_keywords)
+
+    if needs_personal and not session.get("registration_number"):
+        reply = "Sure, I can help with that. Could you please tell me your registration number first?"
+        _speak_and_listen(response, reply)
+        return Response(content=str(response), media_type="application/xml")
+
     # CALL AI BACKEND 
     ai_response = await _call_ai(
         query=query,
@@ -240,5 +249,21 @@ async def _call_ai(
     call_sid: str,
     chat_history: list,
     registration_number: str = None,
-) -> str:
-    return f"You said: {query}"
+) -> str: #real-time type response is implied
+    try:
+        payload = {
+            "query": query,
+            "call_sid": call_sid,
+            "chat_history": chat_history,
+            "registration_number": registration_number,
+        }
+
+        async with httpx.AsyncClient(timeout=30.0) as client:
+            resp = await client.post(BACKEND_QUERY_URL, json=payload)
+            resp.raise_for_status()
+            data = resp.json()
+            return data.get("answer", "Sorry, I could not get a response.")
+
+    except Exception as e:
+        logger.error(f"[AI] Error calling backend: {e}")
+        return "Sorry, I am having trouble right now. Please try again."
