@@ -360,8 +360,7 @@ async def handle_query(request: QueryRequest):
 
     if not request.registration_number:
         reg_match = re.search(
-            r'\b(\d{4}[A-Z]{2}\d{3}|\d{4,10})\b',
-            request.query,
+            r'\b(1\d{7})\b',
             re.IGNORECASE
         )
         if reg_match:
