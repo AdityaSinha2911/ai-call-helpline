@@ -20,6 +20,8 @@ checkpoints/
 # Logs
 *.log
 
+ngrok.exe
+
 #database files
 *.db
 # OS files
