@@ -1,5 +1,4 @@
 """
-call_handler.py
 Main Twilio webhook handler for incoming voice calls.
 
 Flow:
@@ -31,7 +30,8 @@ from fastapi.responses import Response
 from twilio.twiml.voice_response import VoiceResponse, Gather
 
 from twilio_voice.session_store import (
-    get_session, update_session, clear_session, set_registration
+    get_session, update_session, clear_session, 
+    set_registration, set_pending_query, pop_pending_query  
 )
 from twilio_voice.stt_handler import (
     process_speech, extract_registration_number, extract_otp
@@ -52,6 +52,7 @@ BACKEND_QUERY_URL = "http://localhost:8000/query"
 
 # Twilio speech settings
 SPEECH_TIMEOUT = 3
+DTMF_TIMEOUT = 10  #waiting time for keypad input
 VOICE_CONFIG   = get_voice_config()
 
 
@@ -97,72 +98,97 @@ async def process_speech_input(
     CallSid: str    = Form(...),
     SpeechResult: str = Form(default=""),
     Confidence: str   = Form(default="0"),
+    Digits: str       = Form(default=""),
 ):
     """
     Twilio sends STT result here after student speaks.
     We process through AI and respond.
     """
     confidence = float(Confidence) if Confidence else 0.0
-
-    # Validate speech
-    ok, result = process_speech(SpeechResult, confidence)
-
     response = VoiceResponse()
-
-    if not ok:
-        # Low confidence or empty — ask to repeat
-        gather = Gather(
-            input="speech",
-            action="/voice/process",
-            method="POST",
-            speech_timeout=SPEECH_TIMEOUT,
-            language="en-IN",
-            enhanced=True,
-        )
-        gather.say(
-            "Sorry, I didn't catch that. Could you please repeat?",
-            **VOICE_CONFIG
-        )
-        response.append(gather)
-        return Response(content=str(response), media_type="application/xml")
-
-    query = result
     session = get_session(CallSid)
+
+    # PRIORITY — if Digits received, use that directly
+    # keypad is more reliable than speech
+    if Digits:
+        query = Digits.replace("#", "").strip()
+        logger.info(f"[Call] [{CallSid}] DTMF input: '{query}'")
+    else:
+        # Fall back to speech
+        ok, result = process_speech(SpeechResult, confidence)
+        if not ok:
+            gather = Gather(
+                input="dtmf speech",
+                action="/voice/process",
+                method="POST",
+                speech_timeout=SPEECH_TIMEOUT,
+                language="en-IN",
+            )
+            gather.say(
+                "Sorry, I didn't catch that. Please repeat or use your keypad.",
+                **VOICE_CONFIG
+            )
+            response.append(gather)
+            return Response(content=str(response), media_type="application/xml")
+        query = result
 
     logger.info(f"[Call] [{CallSid}] Query: '{query}'")
 
     # OTP VERIFICATION FLOW 
-    # If session is waiting for OTP
+    # OTP FLOW — use keypad
     if session.get("awaiting_otp"):
-        otp = extract_otp(query)
-        if otp:
+        otp = query  # digits entered directly, no extraction needed
+        if otp.isdigit() and len(otp) == 6:
             reg = session.get("registration_number")
             success, reason = verify_otp_code(reg, otp)
             msg = get_otp_message(reason)
 
             if success:
                 session["awaiting_otp"] = False
-                session["otp_verified"]  = True
+                session["otp_verified"] = True
                 update_session(CallSid, session)
 
             reply = prepare_for_speech(msg)
             _speak_and_listen(response, reply)
             return Response(content=str(response), media_type="application/xml")
+        else:
+            # Invalid OTP format
+            _ask_for_digits(
+                response,
+                "Please enter your 6-digit OTP using keypad and press hash at end.",
+                num_digits=6
+            )
+            return Response(content=str(response), media_type="application/xml")
 
-    # REGISTRATION NUMBER DETECTION 
-    reg = extract_registration_number(query)
+    # REG NUMBER DETECTION
+    if query.isdigit() and len(query) == 8:
+        reg = query
+    else:
+        reg = extract_registration_number(query)
+
     if reg and not session.get("registration_number"):
         set_registration(CallSid, reg)
         session = get_session(CallSid)
         logger.info(f"[Call] [{CallSid}] Reg detected: {reg}")
 
-    # If query needs personal data but no reg number yet
-    personal_keywords = ['fee', 'fees', 'attendance', 'result', 'marks', 'hostel']
+        # Resume original question if student gave reg number
+        pending = pop_pending_query(CallSid)
+        if pending:
+            query = pending
+
+    # Ask for reg number if needed
+    personal_keywords = ['fee', 'fees', 'attendance', 
+                         'result', 'marks', 'hostel']
     needs_personal = any(w in query.lower() for w in personal_keywords)
 
     if needs_personal and not session.get("registration_number"):
-        reply = "Sure, I can help with that. Could you please tell me your registration number first?"
-        _speak_and_listen(response, reply)
+        set_pending_query(CallSid, query) #uses session handler
+        _ask_for_digits(
+            response,
+            "Sure! Please enter your 8-digit registration number "
+            "using the keypad and press hash when done.",
+            num_digits=8
+        )
         return Response(content=str(response), media_type="application/xml")
 
     # CALL AI BACKEND 
@@ -238,6 +264,27 @@ def _speak_and_listen(response: VoiceResponse, text: str) -> None:
         speech_timeout=SPEECH_TIMEOUT,
         language="en-IN",
         enhanced=True,
+    )
+    gather.say(text, **VOICE_CONFIG)
+    response.append(gather)
+    response.redirect("/voice/no-input", method="POST")
+
+# Uses BOTH speech and keypad
+def _ask_for_digits(
+    response: VoiceResponse,
+    text: str,
+    num_digits: int,
+    action: str = "/voice/process"
+) -> None:
+    gather = Gather(
+        input="dtmf speech",     # accept both
+        action=action,
+        method="POST",
+        finish_on_key="#",       # press # to submit
+        timeout=DTMF_TIMEOUT,
+        num_digits=num_digits,   # auto-submit after N digits
+        speech_timeout=SPEECH_TIMEOUT,
+        language="en-IN",
     )
     gather.say(text, **VOICE_CONFIG)
     response.append(gather)
