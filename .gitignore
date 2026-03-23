@@ -24,6 +24,8 @@ ngrok.exe
 
 #database files
 *.db
+#for testing purposes
+*.sql 
 # OS files
 .DS_Store
 Thumbs.db
