@@ -256,17 +256,27 @@ async def call_status(
 
 # HELPERS 
 def _speak_and_listen(response: VoiceResponse, text: str) -> None:
-    """Speak text and start listening again."""
+    #speak the response first
+    response.say(text, **VOICE_CONFIG)
+
+    # Start listening AFTER speech finishes
     gather = Gather(
         input="speech",
         action="/voice/process",
         method="POST",
-        speech_timeout=SPEECH_TIMEOUT,
+        speech_timeout="auto",
         language="en-IN",
         enhanced=True,
     )
-    gather.say(text, **VOICE_CONFIG)
+
+    gather.say(
+        "Please tell me your next query.",
+        **VOICE_CONFIG
+    )
+
     response.append(gather)
+
+    # fallback loop (instead of hangup)
     response.redirect("/voice/no-input", method="POST")
 
 # Uses BOTH speech and keypad
