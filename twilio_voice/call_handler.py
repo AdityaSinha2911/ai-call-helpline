@@ -25,9 +25,11 @@ Flow:
 
 import logging
 import httpx
+import asyncio
 from fastapi import APIRouter, Form, Request
 from fastapi.responses import Response
 from twilio.twiml.voice_response import VoiceResponse, Gather
+
 
 from twilio_voice.session_store import (
     get_session, update_session, clear_session, 
@@ -46,6 +48,9 @@ from fastapi.responses import Response
 logger = logging.getLogger("helpline.call_handler")
 
 router = APIRouter(prefix="/voice", tags=["Voice"])
+
+# store background responses
+ASYNC_RESPONSES = {} 
 
 # FastAPI AI backend URL
 BACKEND_QUERY_URL = "http://localhost:8000/query"
@@ -192,26 +197,27 @@ async def process_speech_input(
         return Response(content=str(response), media_type="application/xml")
 
     # CALL AI BACKEND 
-    ai_response = await _call_ai(
-        query=query,
-        call_sid=CallSid,
-        chat_history=session.get("chat_history", []),
-        registration_number=session.get("registration_number"),
+    # check if previous response is ready
+    if CallSid in ASYNC_RESPONSES:
+        ai_response = ASYNC_RESPONSES.pop(CallSid)
+
+        clean_reply = prepare_for_speech(ai_response)
+        _speak_and_listen(response, clean_reply)
+
+        return Response(content=str(response), media_type="application/xml")
+    
+    # otherwise -- start background task
+    asyncio.create_task(
+        _process_ai_background(CallSid, query, session)
     )
 
-    # Update chat history
-    session["chat_history"].append({"role": "user",      "content": query})
-    session["chat_history"].append({"role": "assistant",  "content": ai_response})
-    if len(session["chat_history"]) > 6:
-        session["chat_history"] = session["chat_history"][-6:]
-    update_session(CallSid, session)
-
-    # Speak response
-    clean_reply = prepare_for_speech(ai_response)
-    _speak_and_listen(response, clean_reply)
+    # immediate response (IMPORTANT)
+    _speak_and_listen(
+        response,
+        "Please wait while I check your information."
+    )
 
     return Response(content=str(response), media_type="application/xml")
-
 
 # NO INPUT 
 @router.post("/no-input")
@@ -324,3 +330,15 @@ async def _call_ai(
     except Exception as e:
         logger.error(f"[AI] Error calling backend: {e}")
         return "Sorry, I am having trouble right now. Please try again."
+    
+# background ai worker
+async def _process_ai_background(call_sid, query, session):
+    ai_response = await _call_ai(
+        query=query,
+        call_sid=call_sid,
+        chat_history=session.get("chat_history", []),
+        registration_number=session.get("registration_number"),
+    )
+
+    # store response for next turn
+    ASYNC_RESPONSES[call_sid] = ai_response
