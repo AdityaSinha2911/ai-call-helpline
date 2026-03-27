@@ -59,6 +59,8 @@ BACKEND_QUERY_URL = "http://localhost:8000/query"
 SPEECH_TIMEOUT = 3
 DTMF_TIMEOUT = 10  #waiting time for keypad input
 VOICE_CONFIG   = get_voice_config()
+ASYNC_POLL_PAUSE_SECONDS = 2
+MAX_ASYNC_POLL_ATTEMPTS = 8
 
 
 # INCOMING CALL 
@@ -207,16 +209,52 @@ async def process_speech_input(
         return Response(content=str(response), media_type="application/xml")
     
     # otherwise -- start background task
+    session["async_poll_attempts"] = 0
+    update_session(CallSid, session)
+
     asyncio.create_task(
         _process_ai_background(CallSid, query, session)
     )
 
     # immediate response (IMPORTANT)
-    _speak_and_listen(
+    _start_async_polling(
         response,
         "Please wait while I check your information."
     )
 
+    return Response(content=str(response), media_type="application/xml")
+
+
+@router.post("/poll")
+async def poll_async_response(CallSid: str = Form(...)):
+    """Twilio polling loop for background AI responses."""
+    response = VoiceResponse()
+    session = get_session(CallSid)
+
+    if CallSid in ASYNC_RESPONSES:
+        ai_response = ASYNC_RESPONSES.pop(CallSid)
+        session["async_poll_attempts"] = 0
+        update_session(CallSid, session)
+
+        clean_reply = prepare_for_speech(ai_response)
+        _speak_and_listen(response, clean_reply)
+        return Response(content=str(response), media_type="application/xml")
+
+    attempts = int(session.get("async_poll_attempts", 0)) + 1
+    session["async_poll_attempts"] = attempts
+    update_session(CallSid, session)
+
+    if attempts >= MAX_ASYNC_POLL_ATTEMPTS:
+        _speak_and_listen(
+            response,
+            "I need a little more time to check this. Please ask again in a moment."
+        )
+        session["async_poll_attempts"] = 0
+        update_session(CallSid, session)
+        return Response(content=str(response), media_type="application/xml")
+
+    response.pause(length=ASYNC_POLL_PAUSE_SECONDS)
+    response.redirect("/voice/poll", method="POST")
     return Response(content=str(response), media_type="application/xml")
 
 # NO INPUT 
@@ -307,6 +345,13 @@ def _ask_for_digits(
     response.redirect("/voice/no-input", method="POST")
 
 
+def _start_async_polling(response: VoiceResponse, text: str) -> None:
+    """Speak a short waiting message, then poll for background completion."""
+    response.say(text, **VOICE_CONFIG)
+    response.pause(length=ASYNC_POLL_PAUSE_SECONDS)
+    response.redirect("/voice/poll", method="POST")
+
+
 async def _call_ai(
     query: str,
     call_sid: str,
@@ -339,6 +384,14 @@ async def _process_ai_background(call_sid, query, session):
         chat_history=session.get("chat_history", []),
         registration_number=session.get("registration_number"),
     )
+
+    # history update 
+    session = get_session(call_sid)
+    history = session.get("chat_history", [])
+    history.append({"role": "user",      "content": query})
+    history.append({"role": "assistant", "content": ai_response})
+    session["chat_history"] = history[-10:]  
+    update_session(call_sid, session)
 
     # store response for next turn
     ASYNC_RESPONSES[call_sid] = ai_response
