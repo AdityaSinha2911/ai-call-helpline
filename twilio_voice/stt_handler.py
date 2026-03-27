@@ -143,11 +143,11 @@ def extract_registration_number(text: str) -> str | None:
         Registration number string or None
 
     Example:
-        reg = extract_registration_number("my reg is 2024EC033")
-        # Returns "2024EC033"
+        reg = extract_registration_number("my reg is 12345678")
+        # Returns "12345678"
     """
-    # Standard format: 2024EC033
-    pattern = r'\b(1\d{7})\b'
+    # Standard format: 12345678
+    pattern = r'\b(1\d{8})\b'
     match = re.search(pattern, text.upper())
 
     if match:
