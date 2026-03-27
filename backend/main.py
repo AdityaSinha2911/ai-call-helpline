@@ -210,13 +210,16 @@ def build_prompt(query: str, registration_number: Optional[str], topic: str, cha
             content = str(msg.get("content", "")).strip()
             if content:
                 lines.append(f"{role}: {content}")
-        history_text = "\n".join(lines) + "\n"   
+        history_text = "\n".join(lines) + "\n" 
+
+    logger.info(f"[DEBUG] build_prompt called — reg={registration_number}, query={query}")  
     
     if not registration_number:
         return f"{SYSTEM_PROMPT}\n\n{history_text}Student: {query}\nAssistant:"
 
     reg     = registration_number.strip().upper()
     student = get_student(reg)
+    logger.info(f"[DEBUG] get_student result — {student}")
 
     if not student:
         return f"{SYSTEM_PROMPT}\n\n{history_text}Student: {query}\nAssistant:"
@@ -359,12 +362,10 @@ async def handle_query(request: QueryRequest):
         )
 
     if not request.registration_number:
-        reg_match = re.search(
-            r'\b(1\d{7})\b',
-            re.IGNORECASE
-        )
+        # 8-digit numeric reg number
+        reg_match = re.search(r'\b(\d{8})\b', request.query)
         if reg_match:
-            request.registration_number = reg_match.group(1).upper()
+            request.registration_number = reg_match.group(1)
             logger.info(f"[{request_id}] Auto-detected reg: {request.registration_number}")
 
     # Call AI Model 
