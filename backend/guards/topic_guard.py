@@ -147,6 +147,80 @@ class TopicResult:
     score: float = 0.0
     blocked_reason: str = ""
 
+# intent for ticket generation added
+def detect_intent(user_message: str) -> dict:
+    """
+    Detects if student's message is a QUERY or a PROBLEM.
+    
+    QUERY  = needs information only, AI can answer directly
+    PROBLEM = something is broken/wrong, needs ticket + human action
+    
+    Returns:
+        {
+            "intent": "query" or "problem",
+            "category": "fees" / "exam" / "hostel" / "document" / "technical" / "other",
+            "needs_ticket": True/False
+        }
+    """
+    msg = user_message.lower()
+    
+    # PROBLEM keywords
+    problem_signals = [
+        # fee problems
+        "paid but", "payment not", "not reflecting", "deducted twice",
+        "fee paid", "challan submitted", "not updated",
+        # portal/technical
+        "not working", "can't login", "unable to login", "portal down",
+        "not loading", "error", "glitch", "wrong marks",
+        # document problems  
+        "not received", "didn't get", "applied but", "pending for",
+        "still waiting",
+        # hostel
+        "room not allotted", "hostel issue", "mess problem",
+        # exam
+        "name missing", "wrong subject", "not on list"
+    ]
+    
+    # QUERY keywords (just asking for info)
+    query_signals = [
+        "when", "what date", "last date", "from which",
+        "how to apply", "what is", "how many", "where is",
+        "tell me about", "inform me", "schedule", "deadline"
+    ]
+    
+    # Check for problem first (higher priority)
+    for signal in problem_signals:
+        if signal in msg:
+            # Detect category
+            category = _get_category(msg)
+            return {
+                "intent": "problem",
+                "category": category,
+                "needs_ticket": True
+            }
+    
+    # Default to query
+    return {
+        "intent": "query",
+        "category": "general",
+        "needs_ticket": False
+    }
+
+
+def _get_category(msg: str) -> str:
+    """Internal helper to find category from message."""
+    if any(w in msg for w in ["fee", "payment", "challan", "receipt"]):
+        return "fees"
+    if any(w in msg for w in ["hostel", "room", "mess", "warden"]):
+        return "hostel"
+    if any(w in msg for w in ["exam", "result", "marks", "grade", "hall ticket"]):
+        return "exam"
+    if any(w in msg for w in ["certificate", "document", "tc", "bonafide", "migration"]):
+        return "document"
+    if any(w in msg for w in ["portal", "login", "password", "site", "dashboard", "error"]):
+        return "technical"
+    return "other"
+
 # MAIN CLASSIFICATION FUNCTION
 def classify_topic(user_input: str) -> TopicResult:
 
