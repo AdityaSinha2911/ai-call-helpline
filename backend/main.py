@@ -228,9 +228,11 @@ def build_prompt(query: str, registration_number: Optional[str], topic: str, cha
 
     if any(w in query_lower for w in ['fee', 'payment', 'dues', 'challan', 'pending', 'paid', 'balance']):
         context = get_fee_summary_text(reg)
+        logger.info(f"[DEBUG] Context being sent to AI: {context}")
 
     elif any(w in query_lower for w in ['attendance', 'absent', 'present', 'bunk', 'short', 'condonation']):
         context = get_attendance_summary_text(reg)
+        logger.info(f"[DEBUG] Context being sent to AI: {context}")
 
     elif any(w in query_lower for w in ['result', 'marks', 'grade', 'cgpa', 'sgpa', 'backlog', 'fail']):
         context = get_results_summary_text(reg)
@@ -270,8 +272,8 @@ async def call_ollama(prompt: str) -> str:
                     "prompt": prompt,
                     "stream": False,
                     "options": {
-                        "temperature": 0.05,
-                        "num_ctx": 1024,      
+                        "temperature": 0.01, #temp reduced, for speed in response
+                        "num_ctx": 512,      #token reduced 
                         "num_predict": 80,    
                         "num_gpu": 999,       
                     }
