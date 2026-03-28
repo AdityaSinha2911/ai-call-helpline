@@ -31,11 +31,6 @@ DB_PATH  = os.path.join(BASE_DIR, 'backend', 'college.db')
 
 # CONNECTION HELPER
 def get_connection() -> sqlite3.Connection:
-    """
-    Returns a SQLite connection with row_factory set.
-    row_factory means results come back as dicts, not tuples.
-
-    """
     if not os.path.exists(DB_PATH):
         raise FileNotFoundError(
             f"Database not found at {DB_PATH}. "
@@ -43,9 +38,8 @@ def get_connection() -> sqlite3.Connection:
         )
 
     conn = sqlite3.connect(DB_PATH)
-    conn.row_factory = sqlite3.Row   # Results as dicts
-    conn.execute("PRAGMA journal_mode=WAL")  # Better concurrent reads
-    conn.execute("PRAGMA foreign_keys=ON")   # Enforce FK constraints
+    conn.row_factory = sqlite3.Row
+    conn.execute("PRAGMA journal_mode=WAL")
     return conn
 
 
@@ -88,13 +82,13 @@ def get_student(reg_number: str) -> Optional[dict]:
     Find a student by registration number.
 
     Args:
-        reg_number: e.g. "2024CS001"
+        reg_number: e.g. "12345678"
 
     Returns:
         dict with all student info, or None if not found.
 
     Example:
-        student = get_student("2024CS001")
+        student = get_student("12345678")
         if student:
             print(student['name'])     # "Rohit Sharma"
             print(student['course'])   # "B.Tech CSE"
@@ -146,7 +140,7 @@ def get_fee_status(reg_number: str) -> Optional[dict]:
         }
 
     Example:
-        fee = get_fee_status("2024CS001")
+        fee = get_fee_status("12345678")
         print(fee['status'])       # "Pending"
         print(fee['total_amount']) # 185000
         print(fee['balance'])      # 185000 (unpaid)
@@ -355,21 +349,31 @@ def create_ticket(
 
 
 def close_ticket(ticket_id: int, admin_note: str = "") -> bool:
-    """
-    Admin closes a ticket.
-
-    Returns True if successful, False if failed.
-    """
-    result = _execute(
-        """UPDATE tickets
-           SET status = 'Closed',
-               resolved_at = CURRENT_TIMESTAMP,
-               updated_at = CURRENT_TIMESTAMP,
-               admin_note = ?
-           WHERE id = ?""",
-        (admin_note, ticket_id)
-    )
-    return result is not None
+    try:
+        conn = get_connection()
+        cursor = conn.execute(
+            """UPDATE tickets
+               SET status = 'Closed',
+                   resolved_at = CURRENT_TIMESTAMP,
+                   updated_at = CURRENT_TIMESTAMP,
+                   admin_note = ?
+               WHERE id = ?""",
+            (admin_note, ticket_id)
+        )
+        conn.commit()
+        rows_affected = cursor.rowcount
+        conn.close()
+        
+        if rows_affected == 0:
+            logger.warning(f"[DB] close_ticket — Ticket #{ticket_id} not found")
+            return False
+            
+        logger.info(f"[DB] Ticket #{ticket_id} closed")
+        return True
+        
+    except Exception as e:
+        logger.error(f"[DB] close_ticket error: {e}")
+        return False
 
 
 def get_all_tickets(status: str = None, limit: int = 50) -> list[dict]:
