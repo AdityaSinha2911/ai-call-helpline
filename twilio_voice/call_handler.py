@@ -43,6 +43,8 @@ from twilio_voice.otp_helper import send_otp, verify_otp_code, get_otp_message
 from fastapi import APIRouter, Request
 from fastapi.responses import Response
 
+from backend.guards.topic_guard import detect_intent
+from backend.database import create_ticket
 
 
 logger = logging.getLogger("helpline.call_handler")
@@ -284,7 +286,6 @@ async def no_input(CallSid: str = Form(...)):
 
     return Response(content=str(response), media_type="application/xml")
 
-
 # CALL STATUS 
 @router.post("/status")
 async def call_status(
@@ -380,20 +381,58 @@ async def _call_ai(
     
 # background ai worker
 async def _process_ai_background(call_sid, query, session):
-    ai_response = await _call_ai(
-        query=query,
-        call_sid=call_sid,
-        chat_history=session.get("chat_history", []),
-        registration_number=session.get("registration_number"),
-    )
+    
+    # STEP 1: Detect if this is a PROBLEM or a QUERY
+    intent_result = detect_intent(query)
+    student_id = session.get("registration_number")
 
-    # history update 
+    # STEP 2: Route based on intent
+    if intent_result["needs_ticket"]:
+        
+        if student_id:
+            # Has reg number → create ticket immediately
+            ticket_id = create_ticket(
+                student_id=student_id,
+                issue=query,
+                call_id=call_sid
+            )
+            if ticket_id:
+                ai_response = (
+                    f"I understand you're facing an issue. "
+                    f"I've raised a support ticket for you. "
+                    f"Your ticket number is {ticket_id}. "
+                    f"Our team will contact you within 24 hours."
+                )
+            else:
+                # create_ticket returned None — DB failed
+                ai_response = (
+                    "I'm sorry, I could not register your complaint right now. "
+                    "Please call back in a few minutes or visit the admin office."
+                )
+        else:
+            # Problem detected but no reg number yet → ask for it
+            ai_response = (
+                "I'd like to help you with that. "
+                "Please enter your 8-digit registration number "
+                "on the keypad so I can raise a ticket for you."
+            )
+
+    else:
+        # STEP 3: It's a QUERY → call AI normally
+        ai_response = await _call_ai(
+            query=query,
+            call_sid=call_sid,
+            chat_history=session.get("chat_history", []),
+            registration_number=student_id,
+        )
+
+    # STEP 4: Update chat history
     session = get_session(call_sid)
     history = session.get("chat_history", [])
     history.append({"role": "user",      "content": query})
     history.append({"role": "assistant", "content": ai_response})
-    session["chat_history"] = history[-10:]  
+    session["chat_history"] = history[-10:]
     update_session(call_sid, session)
 
-    # store response for next turn
+    # STEP 5: Store response for poll pickup
     ASYNC_RESPONSES[call_sid] = ai_response
