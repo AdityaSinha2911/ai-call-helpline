@@ -59,8 +59,10 @@ BACKEND_QUERY_URL = "http://localhost:8000/query"
 SPEECH_TIMEOUT = 3
 DTMF_TIMEOUT = 10  #waiting time for keypad input
 VOICE_CONFIG   = get_voice_config()
-ASYNC_POLL_PAUSE_SECONDS = 2
-MAX_ASYNC_POLL_ATTEMPTS = 8
+
+# poll timing increased
+ASYNC_POLL_PAUSE_SECONDS = 3
+MAX_ASYNC_POLL_ATTEMPTS = 20
 
 
 # INCOMING CALL 
@@ -366,7 +368,7 @@ async def _call_ai(
             "registration_number": registration_number,
         }
 
-        async with httpx.AsyncClient(timeout=30.0) as client:
+        async with httpx.AsyncClient(timeout=90.0) as client: #timeout time increased
             resp = await client.post(BACKEND_QUERY_URL, json=payload)
             resp.raise_for_status()
             data = resp.json()
