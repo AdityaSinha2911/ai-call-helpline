@@ -21,6 +21,7 @@ checkpoints/
 *.log
 
 ngrok.exe
+.ngrok.exe.old
 
 #database files
 *.db
@@ -29,3 +30,6 @@ ngrok.exe
 # OS files
 .DS_Store
 Thumbs.db
+
+#random files
+test.py
