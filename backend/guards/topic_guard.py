@@ -169,16 +169,27 @@ def detect_intent(user_message: str) -> dict:
         # fee problems
         "paid but", "payment not", "not reflecting", "deducted twice",
         "fee paid", "challan submitted", "not updated",
+        "still showing dues", "showing dues",          
+
+        # scholarship problems
+        "not credited", "amount not", "scholarship not",  
+
         # portal/technical
         "not working", "can't login", "unable to login", "portal down",
         "not loading", "error", "glitch", "wrong marks",
+
         # document problems  
         "not received", "didn't get", "applied but", "pending for",
         "still waiting",
+
         # hostel
         "room not allotted", "hostel issue", "mess problem",
-        # exam
-        "name missing", "wrong subject", "not on list"
+        "food quality",  "very bad",              
+        "not good",                                  
+
+        # exam / hall ticket
+        "name missing", "wrong subject", "not on list",
+        "missing from", "hall ticket",                
     ]
     
     # QUERY keywords (just asking for info)
@@ -191,7 +202,6 @@ def detect_intent(user_message: str) -> dict:
     # Check for problem first (higher priority)
     for signal in problem_signals:
         if signal in msg:
-            # Detect category
             category = _get_category(msg)
             return {
                 "intent": "problem",
@@ -205,7 +215,6 @@ def detect_intent(user_message: str) -> dict:
         "category": "general",
         "needs_ticket": False
     }
-
 
 def _get_category(msg: str) -> str:
     """Internal helper to find category from message."""
@@ -229,7 +238,7 @@ def classify_topic(user_input: str) -> TopicResult:
     
 # greetings are added to be passed without any blockade
     GREETINGS = [
-        "hello", "hi", "hey", "hii", "helo", "heya",
+        "hello", "hi", "hey", "hii", "helo", "heya","hiii",
         "good morning", "good afternoon", "good evening",
         "namaste", "namaskar", "sat sri akal", "jai hind",
         "howdy", "greetings", "sup", "yo"
