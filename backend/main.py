@@ -23,6 +23,7 @@ from fastapi import FastAPI, HTTPException, Request, status,APIRouter
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, Response
 from pydantic import BaseModel, Field, field_validator
+from typing import Optional
 
 from backend.guards.input_guard import check_input
 from backend.guards.topic_guard import classify_topic
@@ -39,7 +40,7 @@ from backend.database import (
     get_fee_summary_text,
     get_attendance_summary_text,
     get_results_summary_text,
-    create_ticket,
+    create_ticket,get_all_tickets, close_ticket,
 )
 
 # LOGGING SETUP
@@ -188,12 +189,22 @@ class MetricsResponse(BaseModel):
     model_errors: int
     uptime_seconds: float
 
+class TicketCreateRequest(BaseModel):
+    student_id: str           # registration number
+    issue: str                # what student described
+    call_id: Optional[str]    # Twilio CallSid
+    priority: Optional[str] = "Normal"
+
+class TicketCloseRequest(BaseModel):
+    ticket_id: int
+    admin_note: Optional[str] = ""
+
 SYSTEM_PROMPT = """You are an AI receptionist for a college helpline. You are on a phone call with a student.
 
 Rules:
 - If someone greets you (hello, hi, namaste etc), greet them back warmly and ask how you can help.
 - Keep all replies under 3 sentences — this is a voice call, be concise and natural.
-- Only answer college queries: fees, attendance, exams, hostel, scholarships, documents.
+- Only answer college queries: fees, attendance, exams, hostel, scholarships, documents, library.
 - If registration number is provided in query, use it directly to fetch data.
 - Be friendly, clear, and natural like a real phone receptionist.
 - Never reveal that you are an AI, never mention Ollama or LLaMA."""
@@ -238,8 +249,7 @@ def build_prompt(query: str, registration_number: Optional[str], topic: str, cha
         context = get_results_summary_text(reg)
 
     elif any(w in query_lower for w in ['complaint', 'problem', 'issue', 'not working', 'grievance']):
-        ticket_id = create_ticket(reg, query, category="other")
-        context = f"Support ticket #{ticket_id} raised. Department will contact in 48 hours."
+        context = "Student has reported an issue. A support ticket will be raised for them."
 
     else:
         context = (
@@ -401,6 +411,76 @@ async def handle_query(request: QueryRequest):
         blocked=False,
         processing_ms=elapsed_ms
     )
+
+# ticket generation
+@app.post("/create-ticket")
+def create_ticket_route(data: TicketCreateRequest):
+    """
+    Called after OTP verification when AI detects a PROBLEM.
+    Creates ticket and returns ticket ID to read back to student.
+    """
+    # Auto-detect category from issue text (your existing logic in create_ticket handles this)
+    ticket_id = create_ticket(
+        student_id=data.student_id,
+        issue=data.issue,
+        call_id=data.call_id,
+        priority=data.priority
+    )
+    
+    if ticket_id:
+        return {
+            "success": True,
+            "ticket_id": ticket_id,
+            "message": f"Your complaint has been registered. Ticket number is {ticket_id}. Our team will contact you within 24 hours."
+        }
+    else:
+        return {"success": False, "message": "Failed to create ticket. Please try again."}
+
+
+@app.get("/admin/tickets")
+def admin_get_tickets(status: str = None, limit: int = 50):
+    """
+    Admin dashboard fetches all tickets.
+    Optional filter: ?status=Open or ?status=Closed
+    """
+    tickets = get_all_tickets(status=status, limit=limit)
+    return {
+        "tickets": tickets,
+        "count": len(tickets)
+    }
+
+
+@app.post("/admin/close-ticket")
+def admin_close_ticket(data: TicketCloseRequest):
+    """Admin marks a ticket as resolved."""
+    success = close_ticket(
+        ticket_id=data.ticket_id,
+        admin_note=data.admin_note
+    )
+    return {"success": success}
+
+
+@app.get("/admin/ticket-stats")
+def ticket_stats():
+    """
+    For dashboard summary cards —
+    total open, in-progress, closed counts by category.
+    """
+    all_tickets = get_all_tickets()
+    
+    stats = {
+        "total": len(all_tickets),
+        "open": len([t for t in all_tickets if t["status"] == "Open"]),
+        "in_progress": len([t for t in all_tickets if t["status"] == "In Progress"]),
+        "closed": len([t for t in all_tickets if t["status"] == "Closed"]),
+        "by_category": {}
+    }
+    
+    for ticket in all_tickets:
+        cat = ticket["category"]
+        stats["by_category"][cat] = stats["by_category"].get(cat, 0) + 1
+    
+    return stats
 
 # Simple health check endpoint used to verify that both the backend and the Ollama model are running.
 @app.get(
