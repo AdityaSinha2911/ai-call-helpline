@@ -349,7 +349,7 @@ def create_ticket(
 
 
 def close_ticket(ticket_id: int, admin_note: str = "") -> bool:
-    try:
+    try: 
         conn = get_connection()
         cursor = conn.execute(
             """UPDATE tickets
