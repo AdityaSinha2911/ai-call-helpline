@@ -58,7 +58,7 @@ ASYNC_RESPONSES = {}
 BACKEND_QUERY_URL = "http://localhost:8000/query"
 
 # Twilio speech settings
-SPEECH_TIMEOUT = 3
+SPEECH_TIMEOUT = 5
 DTMF_TIMEOUT = 10  #waiting time for keypad input
 VOICE_CONFIG   = get_voice_config()
 
