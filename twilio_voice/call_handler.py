@@ -143,6 +143,10 @@ async def process_speech_input(
             return Response(content=str(response), media_type="application/xml")
         query = result
 
+    # Student spoke — reset silence strike counter
+    session["no_input_strikes"] = 0
+    update_session(CallSid, session)
+
     logger.info(f"[Call] [{CallSid}] Query: '{query}'")
 
     # OTP VERIFICATION FLOW 
@@ -261,13 +265,48 @@ async def poll_async_response(CallSid: str = Form(...)):
     response.redirect("/voice/poll", method="POST")
     return Response(content=str(response), media_type="application/xml")
 
-# NO INPUT 
+# NO INPUT
+# Strikes before hangup. 2 strikes = one re-prompt then goodbye (~15 sec total silence).
+_MAX_NO_INPUT_STRIKES = 2
+
 @router.post("/no-input")
-async def no_input(CallSid: str = Form(...)):
-    """Called when student doesn't speak."""
+async def no_input(
+    request: Request,
+    CallSid: str = Form(default=""),
+):
+    """
+    Called when student doesn't speak.
+
+    Strike 1  → re-prompt, keep listening
+    Strike 2+ → say goodbye and hang up
+
+    Edge-case guard: if a background AI task is still running, we must NOT
+    hang up here. Instead redirect back to /poll to keep the call alive.
+    """
     logger.info(f"[Call] [{CallSid}] No input")
 
+    session = get_session(CallSid)
+
+    # Guard — AI still processing: keep the call alive, do not hang up
+    if CallSid in ASYNC_RESPONSES or int(session.get("async_poll_attempts", 0)) > 0:
+        response = VoiceResponse()
+        response.pause(length=ASYNC_POLL_PAUSE_SECONDS)
+        response.redirect("/voice/poll", method="POST")
+        return Response(content=str(response), media_type="application/xml")
+
+    strikes = int(session.get("no_input_strikes", 0)) + 1
+    session["no_input_strikes"] = strikes
+    update_session(CallSid, session)
+
     response = VoiceResponse()
+
+    if strikes >= _MAX_NO_INPUT_STRIKES:
+        # Enough silence — say goodbye cleanly
+        response.say("We haven't heard from you. Thank you for calling. Goodbye!", **VOICE_CONFIG)
+        response.hangup()
+        return Response(content=str(response), media_type="application/xml")
+
+    # Strike 1 — one re-prompt, then loop back here if still silent
     gather = Gather(
         input="speech",
         action="/voice/process",
@@ -276,13 +315,9 @@ async def no_input(CallSid: str = Form(...)):
         language="en-IN",
         enhanced=True,
     )
-    gather.say(
-        "Are you still there? Please speak your query.",
-        **VOICE_CONFIG
-    )
+    gather.say("Are you still there? Please speak your query.", **VOICE_CONFIG)
     response.append(gather)
-    response.say("Thank you for calling. Goodbye!", **VOICE_CONFIG)
-    response.hangup()
+    response.redirect("/voice/no-input", method="POST")
 
     return Response(content=str(response), media_type="application/xml")
 
@@ -301,9 +336,31 @@ async def call_status(
     return Response(content="", media_type="text/plain")
 
 
-# HELPERS 
+# HELPERS
+
+# If AI response already ends with a question, don't add a redundant prompt.
+_QUESTION_SIGNALS = (
+    "?",
+    "please let me know",
+    "can you tell me",
+    "could you tell me",
+    "do you want",
+    "would you like",
+    "please confirm",
+    "please enter",
+    "please say",
+    "is that correct",
+    "anything else",
+    "how can i help",
+    "press ",          # e.g. "press 1 for yes"
+)
+
+def _response_is_question(text: str) -> bool:
+    lowered = text.lower().strip()
+    return any(lowered.endswith(sig) or sig in lowered for sig in _QUESTION_SIGNALS)
+
 def _speak_and_listen(response: VoiceResponse, text: str) -> None:
-    #speak the response first
+    # speak the response first
     response.say(text, **VOICE_CONFIG)
 
     # Start listening AFTER speech finishes
@@ -316,10 +373,11 @@ def _speak_and_listen(response: VoiceResponse, text: str) -> None:
         enhanced=True,
     )
 
-    gather.say(
-        "Please tell me your next query.",
-        **VOICE_CONFIG
-    )
+    # Only add a prompt when the AI response is NOT already a question.
+    # If AI already asked something (e.g. "Anything else?"), stay silent —
+    # adding "Please tell me your next query" on top overrides it and sounds broken.
+    if not _response_is_question(text):
+        gather.say("Is there anything else I can help you with?", **VOICE_CONFIG)
 
     response.append(gather)
 
