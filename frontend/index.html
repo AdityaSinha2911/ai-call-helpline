@@ -1,193 +1,174 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>AI Helpline — College Assistant</title>
-  <link rel="stylesheet" href="style.css" />
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600&display=swap" rel="stylesheet">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Call Details — AI Helpline</title>
+  <link rel="stylesheet" href="style.css">
 </head>
 <body>
 
-  <div class="bg-blob blob-1"></div>
-  <div class="bg-blob blob-2"></div>
-  <div class="bg-blob blob-3"></div>
+<!-- SIDEBAR -->
+<aside class="sidebar">
+  <div class="sidebar-brand">
+    <h1>AI Helpline</h1>
+    <p>Admin Dashboard</p>
+  </div>
+  <nav class="sidebar-nav">
+    <span class="nav-label">Menu</span>
+    <a href="index.html" class="nav-item active" data-page="index.html">
+      <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+      Call Details
+    </a>
+    <a href="tickets.html" class="nav-item" data-page="tickets.html">
+      <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M15 5v2M15 11v2M15 17v2M5 5h14a2 2 0 012 2v3a2 2 0 000 4v3a2 2 0 01-2 2H5a2 2 0 01-2-2v-3a2 2 0 000-4V7a2 2 0 012-2z"/></svg>
+      Ticket Categories
+    </a>
+    <a href="ticket-list.html" class="nav-item" data-page="ticket-list.html">
+      <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg>
+      Ticket List
+    </a>
+  </nav>
+  <div class="sidebar-footer">
+    <div class="avatar">A</div>
+    <div class="avatar-info">
+      <p>Admin</p>
+      <span>College Helpline</span>
+    </div>
+  </div>
+</aside>
 
-  <aside class="sidebar">
-    <div class="sidebar-logo">
-      <div class="logo-icon">
-        <svg viewBox="0 0 36 36" fill="none">
-          <circle cx="18" cy="18" r="17" stroke="currentColor" stroke-width="1.5"/>
-          <path d="M10 18 Q18 10 26 18 Q18 26 10 18Z" fill="currentColor" opacity="0.35"/>
-          <circle cx="18" cy="18" r="4" fill="currentColor"/>
-        </svg>
-      </div>
-      <div>
-        <div class="logo-title">AI Helpline</div>
-        <div class="logo-sub">College Assistant</div>
+<!-- MAIN -->
+<main class="main">
+  <div class="page-header">
+    <div>
+      <h2>Call Details</h2>
+      <p>Overview of all incoming calls and tickets</p>
+    </div>
+    <select class="filter-select" id="filterSelect">
+      <option value="all">All Calls</option>
+      <option value="today">Today</option>
+      <option value="week">This Week</option>
+    </select>
+  </div>
+
+  <!-- STATS -->
+  <div class="stats-grid">
+    <div class="stat-card blue">
+      <div class="stat-card-title">Monthly Calls</div>
+      <div class="stat-row">
+        <div class="stat-item">
+          <label>Total Tickets</label>
+          <div class="val blue" id="monthly-total">—</div>
+        </div>
+        <div class="stat-item">
+          <label>Open</label>
+          <div class="val green" id="monthly-open">—</div>
+        </div>
+        <div class="stat-item">
+          <label>Closed</label>
+          <div class="val red" id="monthly-closed">—</div>
+        </div>
       </div>
     </div>
 
-    <nav class="sidebar-nav">
-      <div class="nav-label">Navigation</div>
-      <a href="#" class="nav-item active" data-page="assistant">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
-        Assistant
-      </a>
-      <a href="#" class="nav-item" data-page="history">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 8v4l3 3"/><circle cx="12" cy="12" r="9"/></svg>
-        Call History
-      </a>
-      <a href="#" class="nav-item" data-page="info">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><path d="M12 8h.01M12 12v4"/></svg>
-        How It Works
-      </a>
-    </nav>
-
-    <div class="sidebar-status">
-      <div class="status-dot" id="statusDot"></div>
-      <div>
-        <div class="status-label">Backend</div>
-        <div class="status-value" id="statusText">Checking...</div>
+    <div class="stat-card green">
+      <div class="stat-card-title">Today's Calls</div>
+      <div class="stat-row">
+        <div class="stat-item">
+          <label>Tickets Generated</label>
+          <div class="val green" id="today-tickets">—</div>
+        </div>
+        <div class="stat-item">
+          <label>In Progress</label>
+          <div class="val blue" id="today-progress">—</div>
+        </div>
       </div>
     </div>
 
-    <div class="session-card">
-      <div class="session-label">Session ID</div>
-      <div class="session-id" id="sessionIdDisplay">—</div>
-      <button class="new-session-btn" id="newSessionBtn">↺ New Session</button>
+    <div class="stat-card orange">
+      <div class="stat-card-title">Weekly Calls</div>
+      <div class="stat-row">
+        <div class="stat-item">
+          <label>Tickets Generated</label>
+          <div class="val dark" id="weekly-tickets">—</div>
+        </div>
+        <div class="stat-item">
+          <label>Closed</label>
+          <div class="val green" id="weekly-closed">—</div>
+        </div>
+      </div>
     </div>
-  </aside>
+  </div>
 
-  <main class="main">
+  <!-- CALL LOGS TABLE -->
+  <div class="filter-bar">
+    <h3>Call Logs</h3>
+    <span style="font-size:12px;color:var(--text-muted)" id="last-updated"></span>
+  </div>
 
-    <!-- ASSISTANT PAGE -->
-    <section class="page active" id="page-assistant">
-      <header class="page-header">
-        <div>
-          <h1 class="page-title">Voice Assistant</h1>
-          <p class="page-subtitle">Speak or type your college query</p>
-        </div>
-        <button class="btn-ghost" id="clearChatBtn">Clear Chat</button>
-      </header>
+  <div class="table-card">
+    <table>
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>Ticket ID</th>
+          <th>Participant ID</th>
+          <th>Category</th>
+          <th>Status</th>
+          <th>Created</th>
+          <th>Summary</th>
+        </tr>
+      </thead>
+      <tbody id="callLogsBody">
+        <tr><td colspan="7" class="loading">Loading call logs...</td></tr>
+      </tbody>
+    </table>
+  </div>
+</main>
 
-      <div class="chat-window" id="chatWindow">
-        <div class="chat-welcome" id="welcomeScreen">
-          <div class="welcome-icon">
-            <svg viewBox="0 0 56 56" fill="none">
-              <circle cx="28" cy="28" r="27" stroke="currentColor" stroke-width="1.2" opacity="0.3"/>
-              <circle cx="28" cy="28" r="18" stroke="currentColor" stroke-width="1" opacity="0.2"/>
-              <path d="M16 28 Q28 16 40 28 Q28 40 16 28Z" fill="currentColor" opacity="0.15"/>
-              <circle cx="28" cy="28" r="7" fill="currentColor" opacity="0.5"/>
-            </svg>
-          </div>
-          <h2>Hello, I'm your College AI</h2>
-          <p>Ask me anything about fees, attendance, exams, hostel, scholarships, or documents.</p>
-          <div class="suggestion-chips">
-            <button class="chip" onclick="fillSuggestion('What is my fee status?')">💰 Fee Status</button>
-            <button class="chip" onclick="fillSuggestion('Show my attendance percentage')">📊 Attendance</button>
-            <button class="chip" onclick="fillSuggestion('When are the upcoming exams?')">📝 Exams</button>
-            <button class="chip" onclick="fillSuggestion('How to apply for hostel?')">🏠 Hostel</button>
-            <button class="chip" onclick="fillSuggestion('Tell me about scholarship eligibility')">🎓 Scholarship</button>
-            <button class="chip" onclick="fillSuggestion('I want to raise a complaint')">🎫 Complaint</button>
-          </div>
-        </div>
-      </div>
+<script src="app.js"></script>
+<script>
+async function loadPage() {
+  const stats = await fetchTicketStats();
+  const tickets = await fetchTickets();
 
-      <div class="input-area">
-        <div class="input-row">
-          <div class="text-input-wrap">
-            <textarea id="textInput" placeholder="Type your query here..." rows="1" maxlength="500"></textarea>
-          </div>
-          <button class="mic-btn" id="micBtn" title="Click to speak">
-            <span class="mic-ring ring-1"></span>
-            <span class="mic-ring ring-2"></span>
-            <svg class="mic-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
-              <rect x="9" y="2" width="6" height="12" rx="3"/>
-              <path d="M5 10a7 7 0 0014 0"/>
-              <line x1="12" y1="20" x2="12" y2="23"/>
-              <line x1="8" y1="23" x2="16" y2="23"/>
-            </svg>
-          </button>
-          <button class="send-btn" id="sendBtn">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
-              <line x1="22" y1="2" x2="11" y2="13"/>
-              <polygon points="22 2 15 22 11 13 2 9 22 2"/>
-            </svg>
-          </button>
-        </div>
-        <div class="input-footer">
-          <span id="micStatus" class="mic-status-text"> Click mic to speak</span>
-          <span id="charCount" class="char-count">0 / 500</span>
-        </div>
-      </div>
-    </section>
+  // Stats cards
+  document.getElementById('monthly-total').textContent   = stats.total ?? 0;
+  document.getElementById('monthly-open').textContent    = stats.open  ?? 0;
+  document.getElementById('monthly-closed').textContent  = stats.closed ?? 0;
+  document.getElementById('today-tickets').textContent   = stats.total ?? 0;
+  document.getElementById('today-progress').textContent  = stats.in_progress ?? 0;
+  document.getElementById('weekly-tickets').textContent  = stats.total ?? 0;
+  document.getElementById('weekly-closed').textContent   = stats.closed ?? 0;
 
-    <!-- HISTORY PAGE -->
-    <section class="page" id="page-history">
-      <header class="page-header">
-        <div>
-          <h1 class="page-title">Call History</h1>
-          <p class="page-subtitle">Conversation log from this session</p>
-        </div>
-        <button class="btn-ghost" id="exportBtn">Export Log</button>
-      </header>
-      <div class="history-list" id="historyList">
-        <div class="empty-state">
-          <svg viewBox="0 0 64 64" fill="none" width="52" height="52">
-            <circle cx="32" cy="32" r="30" stroke="currentColor" stroke-width="1.5" opacity="0.25"/>
-            <path d="M22 32h20M32 22v20" stroke="currentColor" stroke-width="2" stroke-linecap="round" opacity="0.3"/>
-          </svg>
-          <p>No history yet.<br>Start a conversation first.</p>
-        </div>
-      </div>
-    </section>
+  // Last updated
+  document.getElementById('last-updated').textContent =
+    'Updated ' + new Date().toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' });
 
-    <!-- INFO PAGE -->
-    <section class="page" id="page-info">
-      <header class="page-header">
-        <div>
-          <h1 class="page-title">How It Works</h1>
-          <p class="page-subtitle">System pipeline and architecture</p>
-        </div>
-      </header>
-      <div class="info-grid">
-        <div class="info-card">
-          <div class="info-num">01</div>
-          <h3>Voice Input</h3>
-          <p>Browser captures your microphone and converts speech to text using the Web Speech API — no external service or cost.</p>
-        </div>
-        <div class="info-card">
-          <div class="info-num">02</div>
-          <h3>Security Guards</h3>
-          <p>Your query passes through Input Guard (jailbreak detection) and Topic Guard (college-only filter) before reaching the AI.</p>
-        </div>
-        <div class="info-card">
-          <div class="info-num">03</div>
-          <h3>AI Processing</h3>
-          <p>Fine-tuned LLaMA 3.1 running via Ollama processes your query with live database context injected into the prompt.</p>
-        </div>
-        <div class="info-card">
-          <div class="info-num">04</div>
-          <h3>Voice Response</h3>
-          <p>AI response is spoken back using the browser's Text-to-Speech engine — natural, clear, and instant.</p>
-        </div>
-        <div class="info-card">
-          <div class="info-num">05</div>
-          <h3>OTP Verification</h3>
-          <p>For personal data like fees or attendance, the system verifies your identity via OTP before sharing any information.</p>
-        </div>
-        <div class="info-card">
-          <div class="info-num">06</div>
-          <h3>Ticket System</h3>
-          <p>Unresolved issues auto-convert to support tickets, visible in the admin dashboard for staff action.</p>
-        </div>
-      </div>
-    </section>
+  // Table
+  const tbody = document.getElementById('callLogsBody');
+  if (!tickets.length) {
+    tbody.innerHTML = `<tr><td colspan="7" class="loading">No call logs yet</td></tr>`;
+    return;
+  }
 
-  </main>
+  tbody.innerHTML = tickets.map((t, i) => `
+    <tr>
+      <td style="color:var(--text-muted);font-size:12px">${i + 1}</td>
+      <td><span class="mono">#${t.id}</span></td>
+      <td><span class="mono">${t.student_id || '—'}</span></td>
+      <td>${categoryEmoji(t.category)} ${t.category || '—'}</td>
+      <td>${statusBadge(t.status)}</td>
+      <td style="font-size:12px;color:var(--text-secondary)">${formatDate(t.created_at)}</td>
+      <td><span class="summary-text">${truncate(t.issue, 55)}</span></td>
+    </tr>
+  `).join('');
+}
 
-  <script src="app.js"></script>
+loadPage();
+setInterval(loadPage, 30000); // auto refresh every 30s
+</script>
+
 </body>
 </html>
