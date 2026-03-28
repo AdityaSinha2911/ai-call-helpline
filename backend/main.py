@@ -283,8 +283,8 @@ async def call_ollama(prompt: str) -> str:
                     "stream": False,
                     "options": {
                         "temperature": 0.01, #temp reduced, for speed in response
-                        "num_ctx": 512,      #token reduced 
-                        "num_predict": 80,    
+                        "num_ctx": 256,      #token reduced 
+                        "num_predict": 60,    
                         "num_gpu": 999,       
                     }
                 }
@@ -444,20 +444,18 @@ def admin_get_tickets(status: str = None, limit: int = 50):
     Optional filter: ?status=Open or ?status=Closed
     """
     tickets = get_all_tickets(status=status, limit=limit)
-    return {
-        "tickets": tickets,
-        "count": len(tickets)
-    }
+    return tickets
 
 
 @app.post("/admin/close-ticket")
 def admin_close_ticket(data: TicketCloseRequest):
-    """Admin marks a ticket as resolved."""
     success = close_ticket(
         ticket_id=data.ticket_id,
         admin_note=data.admin_note
     )
-    return {"success": success}
+    if not success:
+        raise HTTPException(status_code=404, detail=f"Ticket #{data.ticket_id} not found")
+    return {"message": f"Ticket #{data.ticket_id} closed", "status": "success"}
 
 
 @app.get("/admin/ticket-stats")
