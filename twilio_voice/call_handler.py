@@ -26,6 +26,7 @@ Flow:
 import logging
 import httpx
 import asyncio
+import random
 from fastapi import APIRouter, Form, Request
 from fastapi.responses import Response
 from twilio.twiml.voice_response import VoiceResponse, Gather
@@ -66,6 +67,22 @@ VOICE_CONFIG   = get_voice_config()
 ASYNC_POLL_PAUSE_SECONDS = 3
 MAX_ASYNC_POLL_ATTEMPTS = 20
 
+GREETING_LINES = [
+    "Hello! Welcome to the college helpline. How may I assist you today?",
+    "Good day! You have reached the college helpline. How can I help you?",
+    "Hello and welcome to the college helpline. Please let me know how I can assist you.",
+    "Welcome to the college helpline. I am here to help you. Please go ahead.",
+    "Hello! Thank you for calling the college helpline. How may I assist you today?"
+]
+
+FOLLOWUP_LINES = [
+    "Is there anything else I can assist you with?",
+    "Do you have any other queries?",
+    "Please let me know if you need further assistance.",
+    "Would you like help with anything else?",
+    "Feel free to ask if you have any other questions."
+]
+
 
 # INCOMING CALL 
 @router.post("/incoming")
@@ -93,7 +110,7 @@ async def incoming_call(
         enhanced=True,
     )
     gather.say(
-        "Hello! Welcome to the college helpline. How can I assist you today?",
+        random.choice(GREETING_LINES),
         **VOICE_CONFIG
     )
     response.append(gather)
@@ -408,7 +425,7 @@ def _speak_and_listen(response: VoiceResponse, text: str) -> None:
     # If AI already asked something (e.g. "Anything else?"), stay silent —
     # adding "Please tell me your next query" on top overrides it and sounds broken.
     if not _response_is_question(text):
-        gather.say("Is there anything else I can help you with?", **VOICE_CONFIG)
+        gather.say(random.choice(FOLLOWUP_LINES), **VOICE_CONFIG)
 
     response.append(gather)
 
