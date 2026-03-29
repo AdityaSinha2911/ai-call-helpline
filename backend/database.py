@@ -184,6 +184,34 @@ def get_fee_summary_text(reg_number: str) -> str:
 
     return " ".join(lines)
 
+def get_hostel_summary_text(reg_number: str) -> str:
+    """
+    Returns hostel allocation status for a student.
+    Falls back to a clear message if no hostel table or record exists.
+    Used by build_prompt() in main.py as AI context.
+    """
+    try:
+        rows = _query(
+            "SELECT * FROM hostel_allocations WHERE student_id = ?",
+            (reg_number.upper(),)
+        )
+        if not rows:
+            return (
+                f"No hostel allocation record found for student {reg_number}. "
+                f"Student should contact Hostel Administration office."
+            )
+        h = rows[0]
+        return (
+            f"Hostel allocation — Block: {h.get('block', 'N/A')}, "
+            f"Room: {h.get('room_number', 'N/A')}, "
+            f"Status: {h.get('status', 'N/A')}."
+        )
+    except Exception:
+        # Table doesn't exist yet — return safe fallback
+        return (
+            "Hostel allocation records are not available in the system yet. "
+            "Please contact the Hostel Administration office directly."
+        )
 
 # ATTENDANCE FUNCTIONS
 
@@ -308,11 +336,11 @@ def create_ticket(
     student_id: str,
     issue: str,
     call_id: str = None,
-    category: str = "other",
+    category: str = None,
     priority: str = "Normal"
 ) -> Optional[int]:
     # Auto-detect category from issue text if not provided
-    if category == "other":
+    if not category:
         issue_lower = issue.lower()
         if any(w in issue_lower for w in ['fee', 'payment', 'challan']):
             category = "fees"
@@ -324,6 +352,8 @@ def create_ticket(
             category = "attendance"
         elif any(w in issue_lower for w in ['certificate', 'document', 'tc', 'bonafide']):
             category = "document"
+        else:
+            category = "other"
 
     # Map category to department
     dept_map = {
