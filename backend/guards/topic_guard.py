@@ -131,7 +131,7 @@ ALLOWED_TOPICS: dict[str, dict[str, float]] = {
     "support_ticket": {
         "complaint": 0.9, "problem": 0.7, "issue": 0.7,
         "not working": 0.8, "broken": 0.5, "report": 0.5,
-        "raise ticket": 1.0, "support": 0.7, "help": 0.7,
+        "raise ticket": 1.0, "support": 0.7, "help": 0.2,
         "grievance": 1.0,
     }
 }
@@ -184,8 +184,8 @@ def detect_intent(user_message: str) -> dict:
 
         # hostel
         "room not allotted", "hostel issue", "mess problem",
-        "food quality",  "very bad",              
-        "not good",                                  
+        "food quality is bad",  "food not good","not allocated","hostel allocation problem",
+        "not allotted","allocation pending",                                
 
         # exam / hall ticket
         "name missing", "wrong subject", "not on list",
