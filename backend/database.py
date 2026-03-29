@@ -187,30 +187,33 @@ def get_fee_summary_text(reg_number: str) -> str:
 def get_hostel_summary_text(reg_number: str) -> str:
     """
     Returns hostel allocation status for a student.
-    Falls back to a clear message if no hostel table or record exists.
-    Used by build_prompt() in main.py as AI context.
+    Data is stored in students table — hostel_taken and hostel_room columns.
     """
-    try:
-        rows = _query(
-            "SELECT * FROM hostel_allocations WHERE student_id = ?",
-            (reg_number.upper(),)
-        )
-        if not rows:
-            return (
-                f"No hostel allocation record found for student {reg_number}. "
-                f"Student should contact Hostel Administration office."
-            )
-        h = rows[0]
+    rows = _query(
+        "SELECT name, hostel_taken, hostel_room FROM students WHERE id = ? AND is_active = 1",
+        (reg_number.upper(),)
+    )
+
+    if not rows:
+        return "Student record not found."
+
+    s = rows[0]
+
+    if not s["hostel_taken"]:
         return (
-            f"Hostel allocation — Block: {h.get('block', 'N/A')}, "
-            f"Room: {h.get('room_number', 'N/A')}, "
-            f"Status: {h.get('status', 'N/A')}."
+            f"Student {s['name']} is not registered for hostel accommodation. "
+            f"To apply for hostel, contact the Hostel Administration office."
         )
-    except Exception:
-        # Table doesn't exist yet — return safe fallback
+
+    if s["hostel_room"]:
         return (
-            "Hostel allocation records are not available in the system yet. "
-            "Please contact the Hostel Administration office directly."
+            f"Hostel allocation for {s['name']} — "
+            f"Room: {s['hostel_room']}. Status: Allocated."
+        )
+    else:
+        return (
+            f"Student {s['name']} is registered for hostel but room has not been allotted yet. "
+            f"Please contact Hostel Administration office for status."
         )
 
 # ATTENDANCE FUNCTIONS
