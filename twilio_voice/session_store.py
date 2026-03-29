@@ -74,19 +74,23 @@ def clear_session(call_sid: str) -> None:
             logger.debug(f"[Session] Cleared: {call_sid}")
 
 
-def set_registration(call_sid: str, reg: str) -> None:
+def set_registration(call_sid: str, reg: str, student_data: dict = None) -> None:
     """
-    Store registration number in session.
-    Bug fix: saves back to store after updating.
+    Store registration number and optionally full student record in session.
+    Also sets verified=True when student_data is provided.
     """
     if not call_sid or not reg:
         return
 
     session = get_session(call_sid)
     session["registration_number"] = str(reg).upper().strip()
-    update_session(call_sid, session)  # ← critical fix
-    logger.info(f"[Session] Reg saved: {call_sid} → {reg}")
 
+    if student_data and isinstance(student_data, dict):
+        session["student_data"] = student_data
+        session["verified"] = True  # student confirmed via DTMF or OTP
+
+    update_session(call_sid, session)
+    logger.info(f"[Session] Reg saved: {call_sid} → {reg} | verified={session['verified']}")
 
 def set_pending_query(call_sid: str, query: str) -> None:
     """
@@ -133,8 +137,12 @@ def _new_session() -> dict:
         "registration_number": None,
         "awaiting_otp":        False,
         "otp_verified":        False,
+        "verified":            False,   # explicit verified flag for AI context
+        "student_data":        None,    # full student row cached after DB fetch
         "chat_history":        [],
         "pending_query":       None,
+        "no_input_strikes":    0,       
+        "async_poll_attempts": 0,       
         "created_at":          now,
         "last_updated":        now,
     }
