@@ -39,7 +39,7 @@ from backend.database import (
     get_student,
     get_fee_summary_text,
     get_attendance_summary_text,
-    get_results_summary_text,
+    get_results_summary_text,get_hostel_summary_text,
     create_ticket,get_all_tickets, close_ticket,
 )
 
@@ -237,6 +237,11 @@ def build_prompt(query: str, registration_number: Optional[str], topic: str, cha
 
     query_lower = query.lower()
 
+    context = (
+    f"Student: {student['name']}. Course: {student['course']}. "
+    f"Year: {student['year']}. Section: {student['section']}."
+    )
+
     if any(w in query_lower for w in ['fee', 'payment', 'dues', 'challan', 'pending', 'paid', 'balance']):
         context = get_fee_summary_text(reg)
         logger.info(f"[DEBUG] Context being sent to AI: {context}")
@@ -247,6 +252,10 @@ def build_prompt(query: str, registration_number: Optional[str], topic: str, cha
 
     elif any(w in query_lower for w in ['result', 'marks', 'grade', 'cgpa', 'sgpa', 'backlog', 'fail']):
         context = get_results_summary_text(reg)
+
+    elif any(w in query_lower for w in ['hostel', 'room allot', 'hostel allot', 'accommodation', 'warden', 'mess','laundry']):
+        context = get_hostel_summary_text(reg)  
+        logger.info(f"[DEBUG] Hostel context built for: {reg}")
 
     elif any(w in query_lower for w in ['complaint', 'problem', 'issue', 'not working', 'grievance']):
         context = "Student has reported an issue. A support ticket will be raised for them."
