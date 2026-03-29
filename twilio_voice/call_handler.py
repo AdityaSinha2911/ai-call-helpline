@@ -58,7 +58,7 @@ ASYNC_RESPONSES = {}
 BACKEND_QUERY_URL = "http://localhost:8000/query"
 
 # Twilio speech settings
-SPEECH_TIMEOUT = 5
+SPEECH_TIMEOUT = 8
 DTMF_TIMEOUT = 10  #waiting time for keypad input
 VOICE_CONFIG   = get_voice_config()
 
@@ -174,6 +174,35 @@ async def process_speech_input(
                 num_digits=6
             )
             return Response(content=str(response), media_type="application/xml")
+    
+    if session.get("pending_ticket_issue"):
+        confirmed = query.strip().lower()
+        if confirmed in ("yes", "yeah", "haan", "ok", "okay", "sure", "please", "yes please"):
+            issue = session.pop("pending_ticket_issue")
+            update_session(CallSid, session)
+            student_id = session.get("registration_number")
+            ticket_id = create_ticket(student_id=student_id, issue=issue, call_id=CallSid,category=None)
+            if ticket_id:
+                reply = (
+                    f"Done. Your ticket number is {ticket_id}. "
+                    f"Our team will contact you within 24 hours. "
+                    f"Is there anything else I can help you with?"
+                )
+            else:
+                reply = "I'm sorry, I could not register your complaint right now. Please try again."
+            _speak_and_listen(response, prepare_for_speech(reply))
+            return Response(content=str(response), media_type="application/xml")
+
+        elif confirmed in ("no", "nahi", "nope", "nah"):
+            session.pop("pending_ticket_issue", None)
+            update_session(CallSid, session)
+            reply = "Okay, no ticket raised. Is there anything else I can help you with?"
+            _speak_and_listen(response, prepare_for_speech(reply))
+            return Response(content=str(response), media_type="application/xml")
+        
+        # If response is unclear, fall through to normal AI processing
+        session.pop("pending_ticket_issue", None)
+        update_session(CallSid, session)
 
     # REG NUMBER DETECTION
     if query.isdigit() and len(query) == 8:
@@ -182,9 +211,11 @@ async def process_speech_input(
         reg = extract_registration_number(query)
 
     if reg and not session.get("registration_number"):
-        set_registration(CallSid, reg)
+        from backend.database import get_student
+        student_data = get_student(reg)
+        set_registration(CallSid, reg, student_data=student_data)
         session = get_session(CallSid)
-        logger.info(f"[Call] [{CallSid}] Reg detected: {reg}")
+        logger.info(f"[Call] [{CallSid}] Reg detected and student cached: {reg}")
 
         # Resume original question if student gave reg number
         pending = pop_pending_query(CallSid)
@@ -221,7 +252,7 @@ async def process_speech_input(
     update_session(CallSid, session)
 
     asyncio.create_task(
-        _process_ai_background(CallSid, query, session)
+        _process_ai_background(CallSid, query)
     )
 
     # immediate response (IMPORTANT)
@@ -398,7 +429,7 @@ def _ask_for_digits(
         finish_on_key="#",       # press # to submit
         timeout=DTMF_TIMEOUT,
         num_digits=num_digits,   # auto-submit after N digits
-        speech_timeout=SPEECH_TIMEOUT,
+        speech_timeout="auto",
         language="en-IN",
     )
     gather.say(text, **VOICE_CONFIG)
@@ -438,37 +469,28 @@ async def _call_ai(
         return "Sorry, I am having trouble right now. Please try again."
     
 # background ai worker
-async def _process_ai_background(call_sid, query, session):
-    
+async def _process_ai_background(call_sid: str, query: str):
+    session = get_session(call_sid) 
     # STEP 1: Detect if this is a PROBLEM or a QUERY
     intent_result = detect_intent(query)
     student_id = session.get("registration_number")
 
     # STEP 2: Route based on intent
     if intent_result["needs_ticket"]:
-        
+
         if student_id:
-            # Has reg number → create ticket immediately
-            ticket_id = create_ticket(
-                student_id=student_id,
-                issue=query,
-                call_id=call_sid
+            # Ask for confirmation BEFORE raising ticket
+            ai_response = (
+                "I understand you're facing an issue. "
+                "Should I raise a support ticket so our team can follow up with you? "
+                "Please say yes or no."
             )
-            if ticket_id:
-                ai_response = (
-                    f"I understand you're facing an issue. "
-                    f"I've raised a support ticket for you. "
-                    f"Your ticket number is {ticket_id}. "
-                    f"Our team will contact you within 24 hours."
-                )
-            else:
-                # create_ticket returned None — DB failed
-                ai_response = (
-                    "I'm sorry, I could not register your complaint right now. "
-                    "Please call back in a few minutes or visit the admin office."
-                )
+            # Store pending ticket intent so next response can create it
+            session = get_session(call_sid)
+            session["pending_ticket_issue"] = query
+            update_session(call_sid, session)
+
         else:
-            # Problem detected but no reg number yet → ask for it
             ai_response = (
                 "I'd like to help you with that. "
                 "Please enter your 8-digit registration number "
