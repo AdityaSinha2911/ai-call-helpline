@@ -8,6 +8,7 @@ This file handles:
   - Extracting registration numbers from speech
   - Handling common STT mistakes (Indian accent)
   - Confidence score filtering
+  - Domain keyword corrections (fees, hostel, attendance etc.)
 """
 
 import re
@@ -18,14 +19,18 @@ logger = logging.getLogger("helpline.stt_handler")
 # Minimum confidence score to accept speech
 MIN_CONFIDENCE = 0.3
 
-# Common STT mistakes for Indian English — fix these
+# Common STT mistakes for Indian English 
 STT_CORRECTIONS = {
-    "to thousand":    "2000",
-    "twenty twenty":  "2020",
-    "twenty twenty one": "2021",
-    "twenty twenty two": "2022",
-    "twenty twenty three": "2023",
-    "twenty twenty four": "2024",
+
+    # NUMBER CORRECTIONS 
+    "to thousand":          "2000",
+    "twenty twenty":        "2020",
+    "twenty twenty one":    "2021",
+    "twenty twenty two":    "2022",
+    "twenty twenty three":  "2023",
+    "twenty twenty four":   "2024",
+
+    # --- DEPARTMENT CODE CORRECTIONS 
     "cs":  "CS",
     "ec":  "EC",
     "ee":  "EE",
@@ -37,7 +42,64 @@ STT_CORRECTIONS = {
     "bca": "BCA",
     "mca": "MCA",
     "b tech": "B.Tech",
-    "btech": "B.Tech",
+    "btech":  "B.Tech",
+
+    # FEES MISHEARS 
+    # Student says "fees" — Twilio returns one of these
+    "peace":   "fees",
+    "fish":    "fees",
+    "fear":    "fees",
+    "feed":    "fees",
+    "feets":   "fees",
+    "feast":   "fees",
+    "fee's":   "fees",
+
+    # HOSTEL MISHEARS 
+    # Student says "hostel" — Twilio returns one of these
+    "hostile":  "hostel",
+    "hostels":  "hostel",
+    "hosel":    "hostel",
+    "hoistelle":"hostel",
+
+    # ATTENDANCE MISHEARS 
+    # Student says "attendance" — Twilio returns one of these
+    "a dance":      "attendance",
+    "intendance":   "attendance",
+    "attendants":   "attendance",
+    "attendence":   "attendance",
+    "attandance":   "attendance",
+
+    # RESULT / MARKS MISHEARS 
+    # Student says "result" or "marks" — Twilio returns one of these
+    "rustle":   "results",
+    "wrestle":  "results",
+    "rezult":   "results",
+    "parks":    "marks",
+    "darks":    "marks",
+    "barks":    "marks",
+
+    # EXAM MISHEARS 
+    # Student says "exam" — Twilio returns one of these
+    "example":  "exam",
+    "exam's":   "exam",
+    "exams":    "exams",
+
+    # SCHOLARSHIP MISHEARS 
+    "scholar ship": "scholarship",
+    "scholarships": "scholarship",
+
+    # ADMISSION MISHEARS
+    "admission's": "admission",
+    "admissions":  "admission",
+
+    # LIBRARY MISHEARS 
+    "library's":  "library",
+    "lie berry":  "library",
+    "lie brary":  "library",
+
+    # DOCUMENT MISHEARS 
+    "document's": "documents",
+    "dock you meant": "document",
 }
 
 
@@ -62,6 +124,11 @@ def process_speech(
             # send to AI
         else:
             # ask student to repeat
+
+    Note:
+        Low confidence (below MIN_CONFIDENCE) is rejected here.
+        Borderline confidence (0.3–0.6) is accepted but STT corrections
+        are especially important at this range — misheard words are common.
     """
     if not speech_result or not speech_result.strip():
         logger.info("[STT] Empty speech result")
@@ -82,6 +149,7 @@ def clean_speech(text: str) -> str:
 
     - Strips extra whitespace
     - Fixes common Indian English STT mistakes
+    - Fixes domain keyword mishears (fees, hostel, attendance etc.)
     - Normalizes registration number format
 
     Args:
@@ -89,10 +157,15 @@ def clean_speech(text: str) -> str:
 
     Returns:
         Cleaned text
+
+    Note:
+        Corrections are applied on lowercased text so matching is
+        case-insensitive. Registration number fixer runs last because
+        it needs to work on the already-corrected lowercase text.
     """
     text = text.strip()
 
-    # Fix common STT mistakes
+    # Fix common STT mistakes — runs on lowercased text for case-insensitive match
     lower = text.lower()
     for wrong, correct in STT_CORRECTIONS.items():
         lower = lower.replace(wrong, correct)
@@ -145,9 +218,15 @@ def extract_registration_number(text: str) -> str | None:
     Example:
         reg = extract_registration_number("my reg is 12345678")
         # Returns "12345678"
+
+    Note:
+        Pattern matches exactly 8 digits — matching your college DB format.
+        Previous pattern (1\\d{8}) was wrong — it matched 9 digits starting
+        with 1, which would never match real student registration numbers.
     """
-    # Standard format: 12345678
-    pattern = r'\b(1\d{8})\b'
+    # Fixed: 8-digit numeric registration number — matches actual DB format
+    # Old pattern r'\b(1\d{8})\b' was incorrect (matched 9 digits)
+    pattern = r'\b(\d{8})\b'
     match = re.search(pattern, text.upper())
 
     if match:
