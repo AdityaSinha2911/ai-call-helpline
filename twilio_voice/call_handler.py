@@ -83,6 +83,13 @@ FOLLOWUP_LINES = [
     "Feel free to ask if you have any other questions."
 ]
 
+EXIT_PHRASES = {
+    "bye", "goodbye", "ok bye", "okay bye",
+    "thank you bye", "thanks bye", "that's all",
+    "thats all", "no thank you", "no thanks",
+    "band karo", "khatam karo", "bas", "bas karo"
+}
+
 
 # INCOMING CALL 
 @router.post("/incoming")
@@ -192,9 +199,22 @@ async def process_speech_input(
             )
             return Response(content=str(response), media_type="application/xml")
     
+    if query.strip() in ("1", "0") and not session.get("pending_ticket_issue"):
+        response.pause(length=2)
+        response.redirect("/voice/poll", method="POST")
+        return Response(content=str(response), media_type="application/xml")
+
+
     if session.get("pending_ticket_issue"):
+        student_id = session.get("registration_number")
+        if not student_id:
+            # if session expire 
+            session.pop("pending_ticket_issue", None)
+            update_session(CallSid, session)
+            _ask_for_digits(response, "Sorry, I lost your details. Please enter your 8-digit registration number again.", num_digits=8)
+            return Response(content=str(response), media_type="application/xml")
         confirmed = query.strip().lower()
-        if confirmed in ("yes", "yeah", "haan", "ok", "okay", "sure", "please", "yes please"):
+        if confirmed in ("yes", "yeah", "haan", "ok", "okay", "sure", "please", "yes please","yash","1"):
             issue = session.pop("pending_ticket_issue")
             update_session(CallSid, session)
             student_id = session.get("registration_number")
@@ -210,7 +230,7 @@ async def process_speech_input(
             _speak_and_listen(response, prepare_for_speech(reply))
             return Response(content=str(response), media_type="application/xml")
 
-        elif confirmed in ("no", "nahi", "nope", "nah"):
+        elif confirmed in ("no", "nahi", "nope", "nah","0"):
             session.pop("pending_ticket_issue", None)
             update_session(CallSid, session)
             reply = "Okay, no ticket raised. Is there anything else I can help you with?"
@@ -259,6 +279,12 @@ async def process_speech_input(
     if CallSid in ASYNC_RESPONSES:
         ai_response = ASYNC_RESPONSES.pop(CallSid)
 
+        if ai_response == "__EXIT__":
+            response.say("Thank you for calling. Goodbye!", **VOICE_CONFIG)
+            response.hangup()
+            clear_session(CallSid)
+            return Response(content=str(response), media_type="application/xml")
+
         clean_reply = prepare_for_speech(ai_response)
         _speak_and_listen(response, clean_reply)
 
@@ -273,10 +299,14 @@ async def process_speech_input(
     )
 
     # immediate response (IMPORTANT)
-    _start_async_polling(
-        response,
-        "Please wait while I check your information."
+
+    is_personal = any(w in query.lower() for w in personal_keywords)
+    waiting_msg = (
+    "Please wait while I check your information."
+    if is_personal
+    else "Please hold on for a moment."
     )
+    _start_async_polling(response, waiting_msg)
 
     return Response(content=str(response), media_type="application/xml")
 
@@ -291,6 +321,12 @@ async def poll_async_response(CallSid: str = Form(...)):
         ai_response = ASYNC_RESPONSES.pop(CallSid)
         session["async_poll_attempts"] = 0
         update_session(CallSid, session)
+
+        if ai_response == "__EXIT__":
+            response.say("Thank you for calling the college helpline. Goodbye!", **VOICE_CONFIG)
+            response.hangup()
+            clear_session(CallSid)
+            return Response(content=str(response), media_type="application/xml")
 
         clean_reply = prepare_for_speech(ai_response)
         _speak_and_listen(response, clean_reply)
@@ -413,7 +449,7 @@ def _speak_and_listen(response: VoiceResponse, text: str) -> None:
 
     # Start listening AFTER speech finishes
     gather = Gather(
-        input="speech",
+        input="dtmf speech",
         action="/voice/process",
         method="POST",
         speech_timeout="auto",
@@ -498,9 +534,9 @@ async def _process_ai_background(call_sid: str, query: str):
         if student_id:
             # Ask for confirmation BEFORE raising ticket
             ai_response = (
-                "I understand you're facing an issue. "
-                "Should I raise a support ticket so our team can follow up with you? "
-                "Please say yes or no."
+                "Sorry, "
+                "If you want I can raise your problem and respective department will contact you, within 24 hours"
+                "Please say yes or no, or press 1 for yes and 0 for no"
             )
             # Store pending ticket intent so next response can create it
             session = get_session(call_sid)
@@ -516,12 +552,28 @@ async def _process_ai_background(call_sid: str, query: str):
 
     else:
         # STEP 3: It's a QUERY → call AI normally
-        ai_response = await _call_ai(
+        QUICK_REPLIES = {
+        "hello": "Hello! How can I help you today?",
+        "hi": "Hi there! How can I assist you?",
+        "thank you": "You're welcome! Is there anything else I can help you with?",
+        "thanks": "Happy to help! Anything else?",
+        "ok": "Sure! Let me know if you need anything.",
+        "okay": "Sure! Let me know if you need anything.",
+        }
+
+        query_lower = query.strip().lower()
+        if any(phrase in query_lower for phrase in EXIT_PHRASES):
+            ASYNC_RESPONSES[call_sid] = "__EXIT__"
+            return
+        if query_lower in QUICK_REPLIES and QUICK_REPLIES[query_lower]:
+            ai_response = QUICK_REPLIES[query_lower]
+        else:
+            ai_response = await _call_ai(
             query=query,
             call_sid=call_sid,
             chat_history=session.get("chat_history", []),
             registration_number=student_id,
-        )
+            )
 
     # STEP 4: Update chat history
     session = get_session(call_sid)
