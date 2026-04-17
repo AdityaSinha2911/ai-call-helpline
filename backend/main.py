@@ -29,6 +29,10 @@ from backend.guards.input_guard import check_input
 from backend.guards.topic_guard import classify_topic
 from backend.guards.output_guard import validate_output
 
+# RAG engine — retrieves relevant college knowledge chunks for any query
+# Sits between topic guard and prompt builder
+from backend.rag.rag_engine import load_and_index_documents, retrieve_context
+
 from dotenv import load_dotenv
 load_dotenv()
 
@@ -104,6 +108,24 @@ async def lifespan(app: FastAPI):
             logger.info("✅ Model warmed up and ready.")
     except Exception as e:
         logger.warning(f"⚠️ Model warmup failed: {e}")
+
+    # ── RAG INDEXING ──────────────────────────────────────────────────────────
+    # Load and index all .txt files from backend/rag/knowledge_base/ into
+    # ChromaDB. This runs in a thread executor so it does NOT block the
+    # async event loop (indexing can take 2-5 seconds on first run).
+    # On subsequent restarts, if documents haven't changed, it skips
+    # re-indexing instantly (hash-based smart cache).
+    # If knowledge_base/ folder is missing, RAG is silently disabled —
+    # the system continues working normally without it.
+    logger.info("Indexing RAG knowledge base...")
+    try:
+        import asyncio
+        loop = asyncio.get_event_loop()
+        await loop.run_in_executor(None, load_and_index_documents)
+        logger.info("✅ RAG knowledge base ready.")
+    except Exception as e:
+        # RAG failure must NEVER crash startup — graceful degradation
+        logger.warning(f"⚠️ RAG indexing failed (system will run without RAG): {e}")
         
     yield
     logger.info("Shutting down helpline backend.")
@@ -211,7 +233,26 @@ Rules:
 
 #build prompt create prompt check if the necessary info is given
 def build_prompt(query: str, registration_number: Optional[str], topic: str, chat_history: Optional[list] = None) -> str:
+    """
+    Constructs the final prompt sent to Ollama.
 
+    Injection order (matters for model attention — most important last):
+        1. SYSTEM instructions       — how the model should behave
+        2. RAG CONTEXT               — general college knowledge (policies, rules, FAQs)
+        3. STUDENT DATA              — live personal data from DB (fees, attendance etc.)
+        4. CONVERSATION HISTORY      — last 4 turns for multi-turn awareness
+        5. STUDENT QUERY             — what the student asked right now
+
+    RAG runs on EVERY query regardless of registration number.
+    It retrieves relevant knowledge chunks from ChromaDB using
+    semantic similarity — so "scholarship deadline" will find
+    the scholarship policy even if the student didn't use exact words.
+
+    If RAG finds nothing relevant, the [COLLEGE KNOWLEDGE] section
+    is simply omitted — no effect on existing behavior.
+    """
+
+    # Build conversation history (last 4 messages only to keep prompt short)
     history_text = ""
     if chat_history:
         lines = []
@@ -221,52 +262,95 @@ def build_prompt(query: str, registration_number: Optional[str], topic: str, cha
             content = str(msg.get("content", "")).strip()
             if content:
                 lines.append(f"{role}: {content}")
-        history_text = "\n".join(lines) + "\n" 
+        history_text = "\n".join(lines) + "\n"
 
-    logger.info(f"[DEBUG] build_prompt called — reg={registration_number}, query={query}")  
-    
+    logger.info(f"[DEBUG] build_prompt called — reg={registration_number}, query={query}")
+
+    # RAG: retrieve relevant knowledge for this query
+    # retrieve_context() embeds the query, searches ChromaDB, and returns
+    # the top matching chunks filtered by relevance threshold.
+    # Returns empty string if nothing relevant found (graceful degradation).
+    rag_context = retrieve_context(query)
+
+    # Case 1: No registration number — general query
     if not registration_number:
-        return f"{SYSTEM_PROMPT}\n\n{history_text}Student: {query}\nAssistant:"
+        prompt = SYSTEM_PROMPT
 
+        # Inject RAG knowledge only if something relevant was found
+        if rag_context:
+            prompt += f"\n\n[COLLEGE KNOWLEDGE]\n{rag_context}"
+            logger.info("[RAG] Context injected into prompt (no-reg path).")
+
+        prompt += f"\n\n{history_text}Student: {query}\nAssistant:"
+        return prompt
+
+    # Case 2: Registration number provided — fetch personal DB data
     reg     = registration_number.strip().upper()
     student = get_student(reg)
     logger.info(f"[DEBUG] get_student result — {student}")
 
+    # Student not found in DB — fall back to general response with RAG
     if not student:
-        return f"{SYSTEM_PROMPT}\n\n{history_text}Student: {query}\nAssistant:"
+        prompt = SYSTEM_PROMPT
+
+        if rag_context:
+            prompt += f"\n\n[COLLEGE KNOWLEDGE]\n{rag_context}"
+            logger.info("[RAG] Context injected into prompt (student-not-found path).")
+
+        prompt += f"\n\n{history_text}Student: {query}\nAssistant:"
+        return prompt
 
     query_lower = query.lower()
 
-    context = (
-    f"Student: {student['name']}. Course: {student['course']}. "
-    f"Year: {student['year']}. Section: {student['section']}."
-    )
-
+    # Fetch the right DB context based on query intent
+    # These keyword checks determine which DB table to query.
+    # RAG runs separately and is COMBINED with this DB data.
     if any(w in query_lower for w in ['fee', 'payment', 'dues', 'challan', 'pending', 'paid', 'balance']):
-        context = get_fee_summary_text(reg)
-        logger.info(f"[DEBUG] Context being sent to AI: {context}")
+        db_context = get_fee_summary_text(reg)
+        logger.info(f"[DEBUG] Context being sent to AI: {db_context}")
 
     elif any(w in query_lower for w in ['attendance', 'absent', 'present', 'bunk', 'short', 'condonation']):
-        context = get_attendance_summary_text(reg)
-        logger.info(f"[DEBUG] Context being sent to AI: {context}")
+        db_context = get_attendance_summary_text(reg)
+        logger.info(f"[DEBUG] Context being sent to AI: {db_context}")
 
     elif any(w in query_lower for w in ['result', 'marks', 'grade', 'cgpa', 'sgpa', 'backlog', 'fail']):
-        context = get_results_summary_text(reg)
+        db_context = get_results_summary_text(reg)
 
-    elif any(w in query_lower for w in ['hostel', 'room allot', 'hostel allot', 'accommodation', 'warden', 'mess','laundry']):
-        context = get_hostel_summary_text(reg)  
+    elif any(w in query_lower for w in ['hostel', 'room allot', 'hostel allot', 'accommodation', 'warden', 'mess', 'laundry']):
+        db_context = get_hostel_summary_text(reg)
         logger.info(f"[DEBUG] Hostel context built for: {reg}")
 
     elif any(w in query_lower for w in ['complaint', 'problem', 'issue', 'not working', 'grievance']):
-        context = "Student has reported an issue. A support ticket will be raised for them."
+        db_context = "Student has reported an issue. A support ticket will be raised for them."
 
     else:
-        context = (
+        db_context = (
             f"Student: {student['name']}. Course: {student['course']}. "
             f"Year: {student['year']}. Section: {student['section']}."
         )
 
-    return f"{SYSTEM_PROMPT}\n\nContext: {context}\n\n{history_text}Student: {query}\nAssistant:"
+    # Assemble final prompt
+    # Order: SYSTEM -> RAG (general) -> DB (personal) -> History -> Query
+    # This ordering is intentional:
+    #   - System sets behavior rules
+    #   - RAG provides general college policy knowledge
+    #   - DB provides specific personal data (overrides generic with real data)
+    #   - History provides conversation continuity
+    #   - Query is what the model responds to
+    prompt = SYSTEM_PROMPT
+
+    if rag_context:
+        # General college knowledge from documents (scholarship rules, hostel timings etc.)
+        prompt += f"\n\n[COLLEGE KNOWLEDGE]\n{rag_context}"
+        logger.info("[RAG] Context injected into prompt (registered student path).")
+
+    # Personal live data from DB
+    prompt += f"\n\nContext: {db_context}"
+
+    # Conversation history + current query
+    prompt += f"\n\n{history_text}Student: {query}\nAssistant:"
+
+    return prompt
 
 # Catch any unexpected errors so the server doesn't crash
 # and the client still receives a clean error response.
