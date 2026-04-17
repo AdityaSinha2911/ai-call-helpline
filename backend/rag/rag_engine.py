@@ -46,7 +46,7 @@ EMBEDDING_MODEL_NAME = "all-MiniLM-L6-v2"
 CHUNK_SIZE           = 400                    # characters per chunk
 CHUNK_OVERLAP        = 80                     # overlap between consecutive chunks
 TOP_K                = 3                      # how many chunks to retrieve per query
-RELEVANCE_THRESHOLD  = 0.75                   # cosine distance cutoff (lower = stricter)
+RELEVANCE_THRESHOLD  = 0.70                   # cosine distance cutoff (lower = stricter)
  # 0 = identical, 1 = unrelated
 
 
@@ -229,6 +229,19 @@ def retrieve_context(query: str, top_k: int = TOP_K) -> str:
     Flow:
         query → embed → cosine search in ChromaDB → filter by threshold → join
     """
+
+    PERSONAL_INDICATORS = ["meri ", "mera ", "mere ", "my "]
+    PERSONAL_TOPICS = ["fees", "attendance", "result", "cgpa", "hostel room", "marks", "backlog", "scholarship amount"]
+    
+    query_lower = query.lower()
+    is_personal = (
+        any(ind in query_lower for ind in PERSONAL_INDICATORS) and
+        any(t in query_lower for t in PERSONAL_TOPICS)
+    )
+    
+    if is_personal:
+        logger.debug("[RAG] Personal query detected — skipping RAG: '%s'", query[:60])
+        return ""
     if _collection.count() == 0:
         logger.debug("[RAG] Collection empty. No context retrieved.")
         return ""
