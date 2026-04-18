@@ -17,6 +17,7 @@ import uuid
 from contextlib import asynccontextmanager
 from typing import Optional
 import re
+import asyncio
 
 import httpx
 from fastapi import FastAPI, HTTPException, Request, status,APIRouter
@@ -60,7 +61,7 @@ logger = logging.getLogger("helpline.main")
 # running locally.
 OLLAMA_URL   = "http://localhost:11434/api/generate"
 MODEL_NAME   = "college-helpline"
-OLLAMA_TIMEOUT = 60.0   # seconds
+OLLAMA_TIMEOUT = 120.0   # seconds
 
 # Standard refusal message 
 REFUSAL_MSG = "I can only assist with college administrative queries such as fees, attendance, exams, hostel, or documents."
@@ -75,6 +76,7 @@ metrics = {
     "uptime_start":     time.time(),
 }
 
+_ollama_semaphore = asyncio.Semaphore(1)
 
 # Runs when the server starts.
 # We use this to check whether the Ollama model server is reachable.
@@ -223,13 +225,15 @@ class TicketCloseRequest(BaseModel):
 
 SYSTEM_PROMPT = """You are an AI receptionist for a college helpline. You are on a phone call with a student.
 
-Rules:
-- If someone greets you (hello, hi, namaste etc), greet them back warmly and ask how you can help.
-- Keep all replies under 3 sentences — this is a voice call, be concise and natural.
+STRICT RULES — follow every one:
+- Reply in MAXIMUM 2 sentences. Never more. This is a voice call — brevity is critical.
+- If data is given in Context, read it and summarize in ONE short sentence. Do not list every field.
+- If someone greets you, reply in ONE sentence and ask how you can help.
 - Only answer college queries: fees, attendance, exams, hostel, scholarships, documents, library.
-- If registration number is provided in query, use it directly to fetch data.
-- Be friendly, clear, and natural like a real phone receptionist.
-- Never reveal that you are an AI, never mention Ollama or LLaMA."""
+- If registration number is provided in the query, use it directly.
+- Be friendly and natural like a real phone receptionist.
+- Never reveal that you are an AI, never mention Ollama or LLaMA.
+- Never start your response with "I" — vary your sentence starters."""
 
 #build prompt create prompt check if the necessary info is given
 def build_prompt(query: str, registration_number: Optional[str], topic: str, chat_history: Optional[list] = None) -> str:
@@ -366,54 +370,55 @@ async def global_exception_handler(request: Request, exc: Exception):
 # Helper function that sends a prompt to the Ollama model
 # and returns the generated response text.
 async def call_ollama(prompt: str) -> str:
-    try:
-        async with httpx.AsyncClient(timeout=OLLAMA_TIMEOUT) as client:
-            response = await client.post(
-                OLLAMA_URL,
-                json={
-                    "model": MODEL_NAME,
-                    "prompt": prompt,
-                    "stream": False,
-                    "options": {
-                        "temperature": 0.01, #temp reduced, for speed in response
-                        "num_ctx": 256,      #token reduced 
-                        "num_predict": 60,    
-                        "num_gpu": 999,       
+    async with _ollama_semaphore:
+        try:
+            async with httpx.AsyncClient(timeout=OLLAMA_TIMEOUT) as client:
+                response = await client.post(
+                    OLLAMA_URL,
+                    json={
+                        "model": MODEL_NAME,
+                        "prompt": prompt,
+                        "stream": False,
+                        "options": {
+                            "temperature": 0.3, 
+                            "num_ctx": 1024,       
+                            "num_predict": 80,    
+                            "num_gpu": 999,       
+                        }
                     }
-                }
-            )
-            response.raise_for_status()
-            data = response.json()
-            return data.get("response", "").strip()
+                )
+                response.raise_for_status()
+                data = response.json()
+                return data.get("response", "").strip()
 
-    except httpx.TimeoutException:
-        logger.error(f"[Ollama] Request timed out after {OLLAMA_TIMEOUT}s")
-        metrics["model_errors"] += 1
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="AI model is taking too long. Please try again in a moment."
-        )
-    except httpx.ConnectError:
-        logger.error("[Ollama] Cannot connect — is 'ollama serve' running?")
-        metrics["model_errors"] += 1
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="AI model is currently unavailable. Please try again shortly."
-        )
-    except httpx.HTTPStatusError as e:
-        logger.error(f"[Ollama] HTTP error: {e.response.status_code}")
-        metrics["model_errors"] += 1
-        raise HTTPException(
-            status_code=status.HTTP_502_BAD_GATEWAY,
-            detail="AI model returned an error."
-        )
-    except Exception as e:
-        logger.error(f"[Ollama] Unexpected error: {e}", exc_info=True)
-        metrics["model_errors"] += 1
-        raise HTTPException(
-            status_code=status.HTTP_502_BAD_GATEWAY,
-            detail="AI model request failed unexpectedly."
-        )
+        except httpx.TimeoutException:
+            logger.error(f"[Ollama] Request timed out after {OLLAMA_TIMEOUT}s")
+            metrics["model_errors"] += 1
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail="AI model is taking too long. Please try again in a moment."
+            )
+        except httpx.ConnectError:
+            logger.error("[Ollama] Cannot connect — is 'ollama serve' running?")
+            metrics["model_errors"] += 1
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail="AI model is currently unavailable. Please try again shortly."
+            )
+        except httpx.HTTPStatusError as e:
+            logger.error(f"[Ollama] HTTP error: {e.response.status_code}")
+            metrics["model_errors"] += 1
+            raise HTTPException(
+                status_code=status.HTTP_502_BAD_GATEWAY,
+                detail="AI model returned an error."
+            )
+        except Exception as e:
+            logger.error(f"[Ollama] Unexpected error: {e}", exc_info=True)
+            metrics["model_errors"] += 1
+            raise HTTPException(
+                status_code=status.HTTP_502_BAD_GATEWAY,
+                detail="AI model request failed unexpectedly."
+            )
 
 
 # ROUTES
@@ -439,7 +444,10 @@ async def handle_query(request: QueryRequest):
     metrics["total_queries"] += 1
 
     logger.info(f"[{request_id}] Query received: '{request.query[:80]}'")
+    from twilio_voice.stt_handler import clean_speech
+    request.query = clean_speech(request.query)
 
+    logger.info(f"[{request_id}] Query received: '{request.query[:80]}'")
     # Detect jailbreaks, prompt injection, or malicious input.
     input_result = check_input(request.query)
     if input_result.blocked:
@@ -455,6 +463,27 @@ async def handle_query(request: QueryRequest):
 
     # Topic Guard
     topic_result = classify_topic(request.query)
+
+    HARD_BLOCK_PATTERNS = [
+    r'\b(ipl|fifa|nba|match|won|winner|champion)\b',
+    r'\b(recipe|cook|biryani|food|restaurant)\b',
+    r'\b(politics|government|election|minister|bjp|congress)\b',
+    r'\b(movie|film|actor|actress|song|music)\b',
+        ]
+    
+    import re as _re
+    query_lower_check = request.query.lower()
+    for pattern in HARD_BLOCK_PATTERNS:
+        if _re.search(pattern, query_lower_check):
+            metrics["blocked_queries"] += 1
+            logger.info(f"[{request_id}] BLOCKED by hard-block pattern: {pattern}")
+            return QueryResponse(
+                request_id=request_id,
+                answer=REFUSAL_MSG,
+                blocked=True,
+                block_reason="off_topic_hard_block",
+                processing_ms=int((time.time() - start_time) * 1000)
+            )
     if not topic_result.allowed:
         metrics["blocked_queries"] += 1
         logger.info(f"[{request_id}] BLOCKED by TopicGuard: {topic_result.blocked_reason}")
