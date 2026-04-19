@@ -19,11 +19,7 @@ logger = logging.getLogger(__name__)
 # These topics are explicitly forbidden regardless of context.
 # Checked first — if any match, query is rejected immediately.
 BLOCKED_TOPICS: dict[str, list[str]] = {
-    "sports": [
-        "cricket", "football", "ipl", "fifa", "nba", "icc", "match score",
-        "world cup", "olympic", "tennis", "badminton", "kabaddi", "hockey",
-        "wicket", "century", "goal", "tournament bracket"
-    ],
+
     "politics": [
         "election", "minister", "parliament", "modi", "bjp", "congress",
         "political party", "vote", "mla", "mp ", "president of india",
@@ -70,7 +66,8 @@ ALLOWED_TOPICS: dict[str, dict[str, float]] = {
     "fees": {
         "fee": 1.0, "fees": 1.0, "tuition": 1.0, "payment": 0.8,
         "challan": 1.0, "dues": 0.9, "fine": 0.6, "penalty": 0.7,
-        "late fee": 1.0, "semester fee": 1.0, "hostel fee": 1.0,
+        "late fee": 1.0, "semester fee": 1.0, "hostel fee": 1.0,"peace":0.6,"fish":0.6,"feeds":0.6,"feed":0.6,
+        "feets":0.6,"feet":0.6,
         "pay": 0.5, "paid": 0.6, "unpaid": 0.8, "pending fee": 1.0,
         "fee receipt": 1.0, "fee structure": 1.0, "refund": 0.7,
     },
@@ -133,6 +130,15 @@ ALLOWED_TOPICS: dict[str, dict[str, float]] = {
         "not working": 0.8, "broken": 0.5, "report": 0.5,
         "raise ticket": 1.0, "support": 0.7, "help": 0.2,
         "grievance": 1.0,
+    },
+    "sports": {
+        "cricket":0.6, "football":0.6,"olympic":0.6, "tennis":0.6,
+        "badminton":0.6, "kabaddi":0.6, "hockey":0.6, "tournament ":0.6,
+    "sports": 0.8,           # ← ye bhi add karo — "sports facilities" query ke liye
+    "gymnasium": 0.8,        # ← add karo
+    "gym": 0.6,              # ← add karo
+    "ground": 0.4,           # ← add karo
+    "physical education": 0.9,  # ← add karo
     }
 }
 
@@ -281,7 +287,7 @@ def classify_topic(user_input: str) -> TopicResult:
     for topic, keyword_weights in ALLOWED_TOPICS.items():
         score = 0.0
         for keyword, weight in keyword_weights.items():
-            if keyword in normalized:
+            if re.search(rf'\b{re.escape(keyword)}s?\b', normalized):
                 score += weight
         if score > 0:
             topic_scores[topic] = score
