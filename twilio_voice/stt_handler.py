@@ -63,7 +63,7 @@ STT_CORRECTIONS = {
 
     # ATTENDANCE MISHEARS 
     # Student says "attendance" — Twilio returns one of these
-    "dance":      "attendance",
+    "a dance":      "attendance",
     "intendance":   "attendance",
     "attendants":   "attendance",
     "attendence":   "attendance",
