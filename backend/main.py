@@ -27,8 +27,10 @@ from pydantic import BaseModel, Field, field_validator
 from typing import Optional
 
 from backend.guards.input_guard import check_input
-from backend.guards.topic_guard import classify_topic
+from backend.guards.topic_guard import classify_topic, detect_intent
 from backend.guards.output_guard import validate_output
+
+from twilio_voice.stt_handler import clean_speech
 
 # RAG engine — retrieves relevant college knowledge chunks for any query
 # Sits between topic guard and prompt builder
@@ -233,7 +235,9 @@ STRICT RULES — follow every one:
 - If registration number is provided in the query, use it directly.
 - Be friendly and natural like a real phone receptionist.
 - Never reveal that you are an AI, never mention Ollama or LLaMA.
-- Never start your response with "I" — vary your sentence starters."""
+- Never start your response with "I" — vary your sentence starters.
+- Always write percentages as words: write "75 percent" not "75%". This is a voice call.
+- When answering about attendance rules, always mention the 75 percent minimum requirement explicitly."""
 
 #build prompt create prompt check if the necessary info is given
 def build_prompt(query: str, registration_number: Optional[str], topic: str, chat_history: Optional[list] = None) -> str:
@@ -444,7 +448,7 @@ async def handle_query(request: QueryRequest):
     metrics["total_queries"] += 1
 
     logger.info(f"[{request_id}] Query received: '{request.query[:80]}'")
-    from twilio_voice.stt_handler import clean_speech
+    
     request.query = clean_speech(request.query)
 
     logger.info(f"[{request_id}] Query received: '{request.query[:80]}'")
@@ -465,11 +469,10 @@ async def handle_query(request: QueryRequest):
     topic_result = classify_topic(request.query)
 
     HARD_BLOCK_PATTERNS = [
-    r'\b(ipl|fifa|nba|match|won|winner|champion)\b',
-    r'\b(recipe|cook|biryani|food|restaurant)\b',
-    r'\b(politics|government|election|minister|bjp|congress)\b',
-    r'\b(movie|film|actor|actress|song|music)\b',
-        ]
+    r'\b(ipl|fifa|nba|cricket match|won the match|match winner)\b',
+    r'\b(bollywood|hollywood|web series|netflix|hotstar)\b',
+    r'\b(bjp|congress|lok sabha|rajya sabha|election result)\b',
+    ]
     
     import re as _re
     query_lower_check = request.query.lower()
@@ -502,6 +505,41 @@ async def handle_query(request: QueryRequest):
             request.registration_number = reg_match.group(1)
             logger.info(f"[{request_id}] Auto-detected reg: {request.registration_number}")
 
+
+    intent_result = detect_intent(request.query)
+    logger.info(f"[{request_id}] Intent: {intent_result['intent']} | needs_ticket={intent_result['needs_ticket']}")
+
+    # If problem detected — create ticket immediately and build response around it
+    if intent_result["needs_ticket"]:
+        ticket_id = None
+        if request.registration_number:
+            ticket_id = create_ticket(
+                student_id=request.registration_number,
+                issue=request.query,
+                call_id=request.session_id,
+                priority="Normal"
+            )
+        
+        if ticket_id:
+            ticket_response = (
+                f"Your complaint has been registered. "
+                f"Ticket number {ticket_id} has been raised and our team will contact you within 24 hours."
+            )
+        else:
+            ticket_response = (
+                "Your complaint has been noted and a support ticket will be raised. "
+                "Our team will look into this and contact you within 24 hours."
+            )
+        
+        metrics["allowed_queries"] += 1
+        elapsed_ms = int((time.time() - start_time) * 1000)
+        return QueryResponse(
+            request_id=request_id,
+            answer=ticket_response,
+            topic=topic_result.topic,
+            blocked=False,
+            processing_ms=elapsed_ms
+        )
     # Call AI Model 
     prompt = build_prompt(request.query, request.registration_number, topic_result.topic, request.chat_history)
 
