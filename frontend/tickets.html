@@ -1,120 +1,57 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Ticket Categories — AI Helpline</title>
-  <link rel="stylesheet" href="style.css">
+  <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="AI Helpline ticket categories"><title>Ticket Categories — AI Helpline</title><link rel="stylesheet" href="style.css">
 </head>
 <body>
-
-<!-- SIDEBAR -->
-<aside class="sidebar">
-  <div class="sidebar-brand">
-    <h1>AI Helpline</h1>
-    <p>Admin Dashboard</p>
-  </div>
-  <nav class="sidebar-nav">
-    <span class="nav-label">Menu</span>
-    <a href="index.html" class="nav-item" data-page="index.html">
-      <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
-      Call Details
-    </a>
-    <a href="tickets.html" class="nav-item active" data-page="tickets.html">
-      <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M15 5v2M15 11v2M15 17v2M5 5h14a2 2 0 012 2v3a2 2 0 000 4v3a2 2 0 01-2 2H5a2 2 0 01-2-2v-3a2 2 0 000-4V7a2 2 0 012-2z"/></svg>
-      Ticket Categories
-    </a>
-    <a href="ticket-list.html" class="nav-item" data-page="ticket-list.html">
-      <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg>
-      Ticket List
-    </a>
-  </nav>
-  <div class="sidebar-footer">
-    <div class="avatar">A</div>
-    <div class="avatar-info">
-      <p>Admin</p>
-      <span>College Helpline</span>
-    </div>
-  </div>
+<aside class="sidebar"><div class="sidebar-brand"><h1>AI Helpline</h1><p>Admin Dashboard</p></div>
+  <nav class="sidebar-nav" aria-label="Main navigation"><span class="nav-label">Workspace</span>
+    <a href="index.html" class="nav-item" data-page="index.html">▦ <span>Overview</span></a>
+    <a href="tickets.html" class="nav-item" data-page="tickets.html">◫ <span>Ticket Categories</span></a>
+    <a href="ticket-list.html" class="nav-item" data-page="ticket-list.html">☷ <span>Ticket Management</span></a>
+  </nav><div class="sidebar-footer"><div class="avatar">A</div><div class="avatar-info"><p>Admin</p><span>College Helpline</span></div></div>
 </aside>
-
-<!-- MAIN -->
 <main class="main">
-  <div class="page-header">
-    <div>
-      <h2>Ticket Categories</h2>
-      <p>Active tickets grouped by department</p>
-    </div>
-    <a href="ticket-list.html" class="btn btn-primary" style="text-decoration:none">
-      View All Tickets →
-    </a>
-  </div>
-
-  <!-- SUMMARY ROW -->
-  <div style="display:flex;gap:12px;margin-bottom:24px">
-    <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-sm);padding:14px 20px;flex:1;text-align:center">
-      <div style="font-size:11px;color:var(--text-muted);font-weight:600;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:6px">Total Tickets</div>
-      <div style="font-size:28px;font-weight:600;color:var(--text-primary)" id="total-count">—</div>
-    </div>
-    <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-sm);padding:14px 20px;flex:1;text-align:center">
-      <div style="font-size:11px;color:var(--text-muted);font-weight:600;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:6px">Open</div>
-      <div style="font-size:28px;font-weight:600;color:var(--primary)" id="open-count">—</div>
-    </div>
-    <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-sm);padding:14px 20px;flex:1;text-align:center">
-      <div style="font-size:11px;color:var(--text-muted);font-weight:600;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:6px">In Progress</div>
-      <div style="font-size:28px;font-weight:600;color:var(--warning)" id="progress-count">—</div>
-    </div>
-    <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-sm);padding:14px 20px;flex:1;text-align:center">
-      <div style="font-size:11px;color:var(--text-muted);font-weight:600;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:6px">Closed</div>
-      <div style="font-size:28px;font-weight:600;color:var(--success)" id="closed-count">—</div>
-    </div>
-  </div>
-
-  <!-- CATEGORY CARDS -->
-  <div class="category-grid" id="categoryGrid">
-    <div class="loading" style="grid-column:span 2">Loading categories...</div>
-  </div>
+  <header class="page-header"><div><p class="eyebrow">WORKSPACE / CATEGORIES</p><h2>Ticket categories</h2><p>Understand which departments receive student support requests.</p></div><a class="btn btn-primary" href="ticket-list.html">Manage tickets →</a></header>
+  <section class="ticket-summary" aria-label="Ticket totals">
+    <div class="mini-stat"><span>Total tickets</span><strong id="total-count">—</strong></div><div class="mini-stat"><span>Open</span><strong id="open-count">—</strong></div>
+    <div class="mini-stat"><span>In progress</span><strong id="progress-count">—</strong></div><div class="mini-stat"><span>Closed</span><strong id="closed-count">—</strong></div>
+  </section>
+  <section class="category-grid category-grid-polished" id="categoryGrid"><div class="loading">Loading category data…</div></section>
 </main>
-
 <script src="app.js"></script>
 <script>
-const CATEGORIES = [
-  { key: 'fees',       label: 'Fees Related',     icon: '💰', cls: 'fees',    dept: 'Accounts Department' },
-  { key: 'technical',  label: 'Technical Problem', icon: '🔧', cls: 'tech',    dept: 'IT Support' },
-  { key: 'document',   label: 'Document Problem',  icon: '📄', cls: 'doc',     dept: 'Admin Office' },
-  { key: 'exam',       label: 'Exam Related',      icon: '📝', cls: 'exam',    dept: 'Examination Cell' },
-  { key: 'hostel',     label: 'Hostel Problem',    icon: '🏠', cls: 'hostel',  dept: 'Hostel Administration' },
-  { key: 'other',      label: 'Others',            icon: '❓', cls: 'other',   dept: 'Student Affairs' },
+const categories = [
+  {key:"fees",label:"Fees & Payments",icon:"💰",department:"Accounts Department",description:"Fee balances, payments and challans"},
+  {key:"hostel",label:"Hostel",icon:"🏠",department:"Hostel Administration",description:"Room allocation and hostel facilities"},
+  {key:"exam",label:"Examinations",icon:"📝",department:"Examination Cell",description:"Exam schedules, marks and results"},
+  {key:"attendance",label:"Attendance",icon:"📊",department:"Academic Department",description:"Attendance records and corrections"},
+  {key:"document",label:"Documents",icon:"📄",department:"Admin Office",description:"Certificates and student documents"},
+  {key:"technical",label:"Technical Support",icon:"🔧",department:"IT Support",description:"Portal and technical issues"},
+  {key:"other",label:"Other Requests",icon:"💬",department:"Student Affairs",description:"General student queries"},
 ];
-
-async function loadPage() {
-  const stats = await fetchTicketStats();
-  const by_cat = stats.by_category || {};
-
-  document.getElementById('total-count').textContent    = stats.total       ?? 0;
-  document.getElementById('open-count').textContent     = stats.open        ?? 0;
-  document.getElementById('progress-count').textContent = stats.in_progress ?? 0;
-  document.getElementById('closed-count').textContent   = stats.closed      ?? 0;
-
-  const grid = document.getElementById('categoryGrid');
-  grid.innerHTML = CATEGORIES.map(cat => {
-    const count = by_cat[cat.key] || 0;
-    return `
-      <a href="ticket-list.html?category=${cat.key}" class="category-card">
-        <div class="cat-icon ${cat.cls}">${cat.icon}</div>
-        <div class="cat-info">
-          <h3>${cat.label}</h3>
-          <p>${cat.dept}</p>
-          <div class="count">${count}</div>
-          <p style="font-size:11px;color:var(--text-muted);margin-top:2px">active ticket${count !== 1 ? 's' : ''}</p>
-        </div>
-      </a>
-    `;
-  }).join('');
+async function loadCategories() {
+  try {
+    const stats = await fetchTicketStats();
+    document.getElementById("total-count").textContent = stats.total ?? 0;
+    document.getElementById("open-count").textContent = stats.open ?? 0;
+    document.getElementById("progress-count").textContent = stats.in_progress ?? 0;
+    document.getElementById("closed-count").textContent = stats.closed ?? 0;
+    const counts = stats.by_category || {};
+    document.getElementById("categoryGrid").innerHTML = categories.map(category => {
+      const count = counts[category.key] || 0;
+      return `<a class="category-card category-card-polished" href="ticket-list.html?category=${encodeURIComponent(category.key)}">
+        <div class="cat-icon category-icon-${category.key}">${category.icon}</div>
+        <div class="cat-info"><span class="category-department">${escapeHtml(category.department)}</span><h3>${escapeHtml(category.label)}</h3><p>${escapeHtml(category.description)}</p><strong class="category-count">${count}</strong><span class="category-count-label">ticket${count === 1 ? "" : "s"}</span></div><span class="category-arrow">→</span>
+      </a>`;
+    }).join("");
+  } catch (error) {
+    document.getElementById("categoryGrid").innerHTML = '<div class="error-state">Unable to load category statistics. Check the backend connection and refresh.</div>';
+    showToast(error.message || "Unable to load categories.", "error");
+  }
 }
-
-loadPage();
+loadCategories();
 </script>
-
 </body>
 </html>

@@ -47,7 +47,7 @@ from backend.database import (
     get_fee_summary_text,
     get_attendance_summary_text,
     get_results_summary_text,get_hostel_summary_text,
-    create_ticket,get_all_tickets, close_ticket,
+    create_ticket,get_all_tickets, close_ticket, get_ticket_stats,
 )
 
 # LOGGING SETUP
@@ -620,25 +620,8 @@ def admin_close_ticket(data: TicketCloseRequest):
 
 @app.get("/admin/ticket-stats")
 def ticket_stats():
-    """
-    For dashboard summary cards —
-    total open, in-progress, closed counts by category.
-    """
-    all_tickets = get_all_tickets()
-    
-    stats = {
-        "total": len(all_tickets),
-        "open": len([t for t in all_tickets if t["status"] == "Open"]),
-        "in_progress": len([t for t in all_tickets if t["status"] == "In Progress"]),
-        "closed": len([t for t in all_tickets if t["status"] == "Closed"]),
-        "by_category": {}
-    }
-    
-    for ticket in all_tickets:
-        cat = ticket["category"]
-        stats["by_category"][cat] = stats["by_category"].get(cat, 0) + 1
-    
-    return stats
+    """Return exact ticket totals and category counts for the admin dashboard."""
+    return get_ticket_stats()
 
 # Simple health check endpoint used to verify that both the backend and the Ollama model are running.
 @app.get(
