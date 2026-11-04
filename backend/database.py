@@ -740,3 +740,26 @@ def get_dashboard_stats() -> dict:
         "pending_followups": pending_followups,
         "fees_pending_count": fees_pending,
     }
+
+
+def get_ticket_stats() -> dict:
+    """Return exact ticket totals for the admin dashboard without list pagination."""
+    status_rows = _query(
+        "SELECT status, COUNT(*) AS count FROM tickets GROUP BY status"
+    )
+    category_rows = _query(
+        "SELECT category, COUNT(*) AS count FROM tickets GROUP BY category"
+    )
+
+    counts = {row["status"]: row["count"] for row in status_rows}
+    by_category = {
+        row["category"] or "other": row["count"] for row in category_rows
+    }
+
+    return {
+        "total": sum(counts.values()),
+        "open": counts.get("Open", 0),
+        "in_progress": counts.get("In Progress", 0),
+        "closed": counts.get("Closed", 0),
+        "by_category": by_category,
+    }
