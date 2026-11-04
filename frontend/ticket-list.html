@@ -45,6 +45,10 @@ const el = id => document.getElementById(id);
 const categoryNames = {fees:"Fees",hostel:"Hostel",exam:"Exam",attendance:"Attendance",document:"Document",technical:"Technical",other:"Other"};
 const params = new URLSearchParams(location.search);
 const requestedTicket = params.get("ticket");
+const requestedCategory = params.get("category");
+if (requestedCategory && [...el("categoryFilter").options].some(option => option.value === requestedCategory)) {
+  el("categoryFilter").value = requestedCategory;
+}
 
 function filteredTickets() {
   const query = el("searchInput").value.trim().toLowerCase();
