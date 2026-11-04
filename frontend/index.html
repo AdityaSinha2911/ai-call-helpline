@@ -3,172 +3,105 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Call Details — AI Helpline</title>
+  <meta name="description" content="AI Helpline administration dashboard">
+  <title>Overview — AI Helpline</title>
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
-
-<!-- SIDEBAR -->
 <aside class="sidebar">
-  <div class="sidebar-brand">
-    <h1>AI Helpline</h1>
-    <p>Admin Dashboard</p>
-  </div>
-  <nav class="sidebar-nav">
-    <span class="nav-label">Menu</span>
-    <a href="index.html" class="nav-item active" data-page="index.html">
-      <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
-      Call Details
-    </a>
-    <a href="tickets.html" class="nav-item" data-page="tickets.html">
-      <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M15 5v2M15 11v2M15 17v2M5 5h14a2 2 0 012 2v3a2 2 0 000 4v3a2 2 0 01-2 2H5a2 2 0 01-2-2v-3a2 2 0 000-4V7a2 2 0 012-2z"/></svg>
-      Ticket Categories
-    </a>
-    <a href="ticket-list.html" class="nav-item" data-page="ticket-list.html">
-      <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg>
-      Ticket List
-    </a>
+  <div class="sidebar-brand"><h1>AI Helpline</h1><p>Admin Dashboard</p></div>
+  <nav class="sidebar-nav" aria-label="Main navigation">
+    <span class="nav-label">Workspace</span>
+    <a href="index.html" class="nav-item" data-page="index.html">▦ <span>Overview</span></a>
+    <a href="tickets.html" class="nav-item" data-page="tickets.html">◫ <span>Ticket Categories</span></a>
+    <a href="ticket-list.html" class="nav-item" data-page="ticket-list.html">☷ <span>Ticket Management</span></a>
   </nav>
-  <div class="sidebar-footer">
-    <div class="avatar">A</div>
-    <div class="avatar-info">
-      <p>Admin</p>
-      <span>College Helpline</span>
-    </div>
-  </div>
+  <div class="sidebar-footer"><div class="avatar">A</div><div class="avatar-info"><p>Admin</p><span>College Helpline</span></div></div>
 </aside>
 
-<!-- MAIN -->
 <main class="main">
-  <div class="page-header">
-    <div>
-      <h2>Call Details</h2>
-      <p>Overview of all incoming calls and tickets</p>
+  <header class="page-header">
+    <div><p class="eyebrow">WORKSPACE / OVERVIEW</p><h2>Dashboard overview</h2><p>Monitor support tickets and their current status.</p></div>
+    <button class="btn btn-primary" id="refreshButton" type="button">↻ Refresh data</button>
+  </header>
+
+  <section class="stats-grid overview-stats" aria-label="Ticket statistics">
+    <article class="stat-card blue"><div class="stat-card-title">Total tickets</div><div class="stat-number" id="stat-total">—</div><p class="stat-hint">Tickets returned by the admin API</p></article>
+    <article class="stat-card green"><div class="stat-card-title">Open</div><div class="stat-number" id="stat-open">—</div><p class="stat-hint">Awaiting admin action</p></article>
+    <article class="stat-card orange"><div class="stat-card-title">In progress</div><div class="stat-number" id="stat-progress">—</div><p class="stat-hint">Currently being handled</p></article>
+    <article class="stat-card purple"><div class="stat-card-title">Closed</div><div class="stat-number" id="stat-closed">—</div><p class="stat-hint">Marked as resolved</p></article>
+  </section>
+
+  <section class="panel">
+    <div class="section-heading"><div><h3>Recent tickets</h3><p>Latest tickets received by the helpline</p></div><a class="text-link" href="ticket-list.html">Manage tickets →</a></div>
+    <div class="toolbar">
+      <label class="search-control"><span aria-hidden="true">⌕</span><input id="ticketSearch" type="search" placeholder="Search ticket, student or issue…" autocomplete="off"></label>
+      <select class="filter-select" id="statusFilter" aria-label="Filter by ticket status">
+        <option value="all">All statuses</option><option value="Open">Open</option><option value="In Progress">In progress</option><option value="Closed">Closed</option>
+      </select>
     </div>
-    <select class="filter-select" id="filterSelect">
-      <option value="all">All Calls</option>
-      <option value="today">Today</option>
-      <option value="week">This Week</option>
-    </select>
-  </div>
-
-  <!-- STATS -->
-  <div class="stats-grid">
-    <div class="stat-card blue">
-      <div class="stat-card-title">Monthly Calls</div>
-      <div class="stat-row">
-        <div class="stat-item">
-          <label>Total Tickets</label>
-          <div class="val blue" id="monthly-total">—</div>
-        </div>
-        <div class="stat-item">
-          <label>Open</label>
-          <div class="val green" id="monthly-open">—</div>
-        </div>
-        <div class="stat-item">
-          <label>Closed</label>
-          <div class="val red" id="monthly-closed">—</div>
-        </div>
-      </div>
+    <div class="table-scroll">
+      <table>
+        <thead><tr><th>Ticket</th><th>Student ID</th><th>Category</th><th>Status</th><th>Created</th><th>Issue summary</th></tr></thead>
+        <tbody id="recentTickets"><tr><td colspan="6" class="loading">Loading tickets…</td></tr></tbody>
+      </table>
     </div>
-
-    <div class="stat-card green">
-      <div class="stat-card-title">Today's Calls</div>
-      <div class="stat-row">
-        <div class="stat-item">
-          <label>Tickets Generated</label>
-          <div class="val green" id="today-tickets">—</div>
-        </div>
-        <div class="stat-item">
-          <label>In Progress</label>
-          <div class="val blue" id="today-progress">—</div>
-        </div>
-      </div>
-    </div>
-
-    <div class="stat-card orange">
-      <div class="stat-card-title">Weekly Calls</div>
-      <div class="stat-row">
-        <div class="stat-item">
-          <label>Tickets Generated</label>
-          <div class="val dark" id="weekly-tickets">—</div>
-        </div>
-        <div class="stat-item">
-          <label>Closed</label>
-          <div class="val green" id="weekly-closed">—</div>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <!-- CALL LOGS TABLE -->
-  <div class="filter-bar">
-    <h3>Call Logs</h3>
-    <span style="font-size:12px;color:var(--text-muted)" id="last-updated"></span>
-  </div>
-
-  <div class="table-card">
-    <table>
-      <thead>
-        <tr>
-          <th>#</th>
-          <th>Ticket ID</th>
-          <th>Participant ID</th>
-          <th>Category</th>
-          <th>Status</th>
-          <th>Created</th>
-          <th>Summary</th>
-        </tr>
-      </thead>
-      <tbody id="callLogsBody">
-        <tr><td colspan="7" class="loading">Loading call logs...</td></tr>
-      </tbody>
-    </table>
-  </div>
+    <div class="table-footer"><span id="resultCount">Loading…</span><span id="lastUpdated" aria-live="polite"></span></div>
+  </section>
+  <p class="dashboard-footnote">Statistics reflect the tickets returned by the current admin API. The API currently returns up to 50 tickets per request.</p>
 </main>
 
 <script src="app.js"></script>
 <script>
-async function loadPage() {
-  const stats = await fetchTicketStats();
-  const tickets = await fetchTickets();
+let tickets = [];
+const byId = id => document.getElementById(id);
 
-  // Stats cards
-  document.getElementById('monthly-total').textContent   = stats.total ?? 0;
-  document.getElementById('monthly-open').textContent    = stats.open  ?? 0;
-  document.getElementById('monthly-closed').textContent  = stats.closed ?? 0;
-  document.getElementById('today-tickets').textContent   = stats.total ?? 0;
-  document.getElementById('today-progress').textContent  = stats.in_progress ?? 0;
-  document.getElementById('weekly-tickets').textContent  = stats.total ?? 0;
-  document.getElementById('weekly-closed').textContent   = stats.closed ?? 0;
-
-  // Last updated
-  document.getElementById('last-updated').textContent =
-    'Updated ' + new Date().toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' });
-
-  // Table
-  const tbody = document.getElementById('callLogsBody');
-  if (!tickets.length) {
-    tbody.innerHTML = `<tr><td colspan="7" class="loading">No call logs yet</td></tr>`;
-    return;
-  }
-
-  tbody.innerHTML = tickets.map((t, i) => `
+function renderTickets() {
+  const query = byId("ticketSearch").value.trim().toLowerCase();
+  const status = byId("statusFilter").value;
+  const filtered = tickets.filter(ticket => {
+    const haystack = [ticket.id, ticket.student_id, ticket.student_name, ticket.category, ticket.issue].join(" ").toLowerCase();
+    return (!query || haystack.includes(query)) && (status === "all" || ticket.status === status);
+  });
+  byId("resultCount").textContent = `${filtered.length} ticket${filtered.length === 1 ? "" : "s"} shown`;
+  byId("recentTickets").innerHTML = filtered.length ? filtered.map(ticket => `
     <tr>
-      <td style="color:var(--text-muted);font-size:12px">${i + 1}</td>
-      <td><span class="mono">#${t.id}</span></td>
-      <td><span class="mono">${t.student_id || '—'}</span></td>
-      <td>${categoryEmoji(t.category)} ${t.category || '—'}</td>
-      <td>${statusBadge(t.status)}</td>
-      <td style="font-size:12px;color:var(--text-secondary)">${formatDate(t.created_at)}</td>
-      <td><span class="summary-text">${truncate(t.issue, 55)}</span></td>
-    </tr>
-  `).join('');
+      <td><a class="mono" href="ticket-list.html?ticket=${encodeURIComponent(ticket.id)}">#${escapeHtml(ticket.id)}</a></td>
+      <td>${escapeHtml(ticket.student_id || "—")}</td>
+      <td>${escapeHtml(categoryEmoji(ticket.category))} ${escapeHtml(ticket.category || "Other")}</td>
+      <td>${statusBadge(ticket.status)}</td>
+      <td>${escapeHtml(formatDate(ticket.created_at))}<span class="cell-subtext">${escapeHtml(formatTime(ticket.created_at))}</span></td>
+      <td class="summary-cell" title="${escapeHtml(ticket.issue || "")}">${escapeHtml(truncate(ticket.issue, 72))}</td>
+    </tr>`).join("") : '<tr><td colspan="6" class="empty-state">No matching tickets found.</td></tr>';
 }
 
-loadPage();
-setInterval(loadPage, 30000); // auto refresh every 30s
-</script>
+async function loadDashboard() {
+  const button = byId("refreshButton");
+  button.disabled = true;
+  button.textContent = "Refreshing…";
+  try {
+    const [stats, data] = await Promise.all([fetchTicketStats(), fetchTickets()]);
+    tickets = Array.isArray(data) ? data : [];
+    byId("stat-total").textContent = stats.total ?? tickets.length;
+    byId("stat-open").textContent = stats.open ?? 0;
+    byId("stat-progress").textContent = stats.in_progress ?? 0;
+    byId("stat-closed").textContent = stats.closed ?? 0;
+    renderTickets();
+    byId("lastUpdated").textContent = `Updated at ${new Date().toLocaleTimeString("en-IN", {hour:"2-digit", minute:"2-digit"})}`;
+  } catch (error) {
+    byId("recentTickets").innerHTML = '<tr><td colspan="6" class="error-state">Could not load dashboard data. Check that the backend is running and the API URL is configured correctly.</td></tr>';
+    byId("resultCount").textContent = "Data unavailable";
+    showToast(error.message || "Unable to load dashboard", "error");
+  } finally {
+    button.disabled = false;
+    button.textContent = "↻ Refresh data";
+  }
+}
 
+byId("refreshButton").addEventListener("click", loadDashboard);
+byId("ticketSearch").addEventListener("input", renderTickets);
+byId("statusFilter").addEventListener("change", renderTickets);
+loadDashboard();
+</script>
 </body>
 </html>
